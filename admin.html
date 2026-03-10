@@ -9,16 +9,16 @@
     <link rel="stylesheet" href="admin.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-bracket/0.11.1/jquery.bracket.min.css" />
   </head>
-<script type="module" src="./supabase-client.js"></script>
-<script type="module">
-  import { supabase } from './supabase-client.js';
-  supabase.auth.getSession().then(({ data: { session } }) => {
-    if (!session) {
-      window.location.href = './login.html';
-    }
-  });
-</script>
-<body>
+  <body>
+  <script type="module" src="./supabase-client.js"></script>
+  <script type="module">
+    import { supabase } from './supabase-client.js';
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        window.location.href = './login.html';
+      }
+    });
+  </script>
 
   <!-- ── SIDEBAR ──────────────────────────────────────────────────────────── -->
   <aside class="sidebar" id="sidebar">
