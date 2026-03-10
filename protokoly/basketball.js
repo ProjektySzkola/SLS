@@ -5,7 +5,7 @@
 ════════════════════════════════════════════════════════════════════ */
 
 // const API = "http://localhost:3001/api";
-import { supabase } from '/supabase-client.js';
+import { supabase } from '../supabase-client.js';
 
 /* ── Helpers ────────────────────────────────────────────────────── */
 const $  = id => document.getElementById(id);

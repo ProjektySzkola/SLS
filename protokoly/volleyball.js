@@ -5,7 +5,7 @@
 ════════════════════════════════════════════════════════════════════ */
 
 // const API = "http://localhost:3001/api";
-import { supabase } from '/supabase-client.js';
+import { supabase } from '../supabase-client.js';
 
 /* ── Helpers ────────────────────────────────────────────────────── */
 const $ = id => document.getElementById(id);
@@ -495,7 +495,8 @@ async function showPlayedMatchInfo(m) {
   const clkP   = people?.find(p => p.id === m.clerk_id);
 
   // Fetch volleyball sets for this match
-  const sets = await apiFetch(`/matches/${m.id}/sets-data`).catch(() => null);
+  const { data: setsRaw } = await supabase.from('match_periods').select('*').eq('match_id', m.id).order('set_number');
+  const sets = setsRaw || [];
   const setChips = Array.isArray(sets) && sets.length
     ? sets.map(s => `<div class="pm-played-period-chip">S${s.set_number}: ${s.points_t1}–${s.points_t2}</div>`).join("")
     : "";
