@@ -216,7 +216,7 @@ async function srInitWorkspace() {
   // wgraj zapisane rozstawienie (position = indeks slotu, -1 = pula)
   if (seedRaw?.length) {
     seedRaw.filter(t => t.position >= 0 && t.position < srSlots.length).forEach(t => {
-      srSlots[t.position].team = { id: t.id, team_name: t.team_name, class_name: t.class_name };
+      srSlots[t.position].team = { id: t.team_id ?? t.id, team_name: t.teams?.team_name ?? t.team_name, class_name: t.teams?.class_name ?? t.class_name };
     });
   }
 
