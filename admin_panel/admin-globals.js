@@ -1,11 +1,6 @@
 /* ── Config ─────────────────────────────────────────────────────────────── */
-// const API = "http://localhost:3001/api";
-// Stara zmienna zostawiona tylko dla bezpośrednich fetch()
-// w plikach admina — zostanie usunięta w kolejnych krokach
-
-
-import { supabase } from '../supabase-client.js';
 const API = null; // nie używana po migracji
+// supabase pochodzi z window.supabase — ustawiane przez admin.html
 
 /* ── Helpers ────────────────────────────────────────────────────────────── */
 const $  = id => document.getElementById(id);
@@ -192,19 +187,3 @@ async function api(path) {
     loader(false);
   }
 }
-/* ── Eksport globalny (wymagany bo pozostałe skrypty nie są modułami) ──── */
-window.supabase       = supabase;
-window.api            = api;
-window.$              = $;
-window.el             = el;
-window.loader         = loader;
-window.fmtDate        = fmtDate;
-window.fmtTime        = fmtTime;
-window.fmtScore       = fmtScore;
-window.fmtSideScore   = fmtSideScore;
-window.fmtScoreText   = fmtScoreText;
-window.matchWinner    = matchWinner;
-window.hasShootout    = hasShootout;
-window.DISC_CLASS     = DISC_CLASS;
-window.DISC_EMOJI     = DISC_EMOJI;
-window.parseLocalDate = parseLocalDate;
