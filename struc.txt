@@ -1,0 +1,35 @@
+.
+├── admin_panel
+│   ├── admin.css
+│   ├── admin-dashboard.js
+│   ├── admin-druzyny.js
+│   ├── admin-globals.js
+│   ├── admin.html
+│   ├── admin-mecze.js
+│   ├── admin-nav.js
+│   ├── admin-planowanie.js
+│   ├── admin-print-protocols.js
+│   ├── admin-ranking.js
+│   ├── admin-rozstawienie.js
+│   ├── admin-sedziowie.js
+│   ├── admin-sport.js
+│   ├── admin-turniej.js
+│   └── login.html
+├── app.js
+├── index.html
+├── protokoly
+│   ├── basketball.css
+│   ├── basketball.html
+│   ├── basketball.js
+│   ├── football.css
+│   ├── football.html
+│   ├── football.js
+│   ├── volleyball.css
+│   ├── volleyball.html
+│   └── volleyball.js
+├── README.md
+├── struc.txt
+├── style.css
+└── supabase-client.js
+
+3 directories, 30 files

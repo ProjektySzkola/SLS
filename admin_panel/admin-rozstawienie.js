@@ -1,3 +1,13 @@
+/* ── normFmt: tablica tournament_format → mapa {disc: fmt} ──────────── */
+if (typeof normFmt === "undefined") {
+  // eslint-disable-next-line no-inner-declarations
+  function normFmt(raw) {
+    if (!raw) return {};
+    if (Array.isArray(raw)) { const m = {}; raw.forEach(f => { if (f.discipline) m[f.discipline] = f; }); return m; }
+    return raw;
+  }
+}
+
 /* ════════════════════════════════════════════════════════════════════════════
    DODAJ ZAWODNIKA
 ════════════════════════════════════════════════════════════════════════════ */
@@ -190,12 +200,13 @@ async function srInitWorkspace() {
   const ws = $("sr-workspace");
   ws.innerHTML = `<div class="panel-loading">Ładowanie…</div>`;
 
-  const [fmtAll, teamsRaw, seedRaw] = await Promise.all([
+  const [fmtAllRaw, teamsRaw, seedRaw] = await Promise.all([
     api("/tournament-format"),
     api("/teams"),
     api(`/seeding/${encodeURIComponent(srDisc)}/${srType}`),
   ]);
 
+  const fmtAll = normFmt(fmtAllRaw);
   srFmt = fmtAll?.[srDisc] || {};
   srAllTeams = teamsRaw || [];
 

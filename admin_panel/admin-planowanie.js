@@ -264,14 +264,23 @@ async function openCloseLeagueModal() {
         const ligaSeeds = await api(`/seeding/${encodeURIComponent(disc)}/liga`);
         const standingsData = await api(`/standings-custom/${encodeURIComponent(disc)}`);
         const fmt = standingsData?.format || {};
-        const groups = fmt.groups_count || 2;
-        const advPerGroup = fmt.advance_per_group || 2;
+        const groups = fmt.groups_count || 1;
+        const perGroup = fmt.teams_per_group || 4;
+        // advance_per_group nie istnieje w schemacie — liczymy: połowa drużyn w grupie
+        const advPerGroup = fmt.advance_per_group || Math.max(1, Math.ceil(perGroup / 2));
         const standingRows = standingsData?.rows || [];
         const promoted = [];
         for (let g = 0; g < groups; g++) {
-          const perGroup = fmt.teams_per_group || 4;
           const groupTeams = (ligaSeeds || []).map(normSeed).filter(s => Math.floor(s.position / perGroup) === g);
-          groupTeams.slice(0, advPerGroup).forEach(s => promoted.push(s));
+          // Sortuj według kolejności w tabeli (standings)
+          const groupIds = groupTeams.map(t => t.id);
+          const groupStandings = standingRows.filter(r => groupIds.includes(r.team_id));
+          groupStandings.slice(0, advPerGroup).forEach(r => {
+            const seed = groupTeams.find(t => t.id === r.team_id);
+            if (seed) promoted.push(seed);
+          });
+          // Jeśli brak statystyk — bierz po pozycji rozstawienia
+          if (!groupStandings.length) groupTeams.slice(0, advPerGroup).forEach(s => promoted.push(s));
         }
         await supabase.from('seeding').delete().eq('discipline', disc).eq('type', 'puchar');
         if (promoted.length) {

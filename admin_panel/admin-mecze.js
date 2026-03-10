@@ -543,7 +543,7 @@ async function mzRenderPdf(data) {
     return `<tr>
       <td>${p.last_name} ${p.first_name}${p.is_captain ? " ©" : ""}</td>
       <td>${p.class_name || "—"}</td>
-      <td>${p.total_points_in_match || 0}</td>
+      <td>${isBasket ? (p.total_points_in_match || 0) : (p.goals || 0)}</td>
       <td>${isBasket ? (p.personal_fouls || 0) : (p.yellow_cards || 0)}</td>
       <td>${isBasket ? (p.technical_fouls || 0) : (p.red_cards ? "TAK" : "—")}</td>
     </tr>`;
@@ -779,7 +779,7 @@ async function mzRenderBasketballPdf(data) {
     // Parse each log entry into structured { action, team, player, score, isEndRow, isStartRow }
     function parseLog(l) {
       const desc = l.description || "";
-      const typ  = (l.action_type || "").toLowerCase();
+      const typ  = (l.event_type || "").toLowerCase();
       // Extract trailing score "→ X:Y"
       const scoreM = desc.match(/→\s*(\d+)/);
       // Extract time from description like "▶ Start - 10:00" or end "■ Koniec - 15:30"
@@ -1210,7 +1210,7 @@ async function mzRenderVolleyballPdf(data) {
     // Parse entry → {event, value, score} — NO timestamp
     function parseLog(l) {
       const desc = l.description || "";
-      const typ  = (l.action_type || "").toLowerCase();
+      const typ  = (l.event_type || "").toLowerCase();
 
       // Score "NN:NN" from "— 12:20"
       const scoreM = desc.match(/[—–-]\s*(\d+:\d+)/);
@@ -1599,7 +1599,7 @@ async function mzRenderFootballPdf(data) {
     return players.map((p, idx) => {
       const rowBg  = idx % 2 === 0 ? "#fff" : "#f4f4f4";
       const cap    = p.is_captain ? " \u00a9" : "";
-      const goals  = p.total_points_in_match ?? 0;
+      const goals  = p.goals ?? p.total_points_in_match ?? 0;
       const yellow = p.yellow_cards ?? 0;
       const red    = p.red_cards ? 1 : 0;
       const isDisq = yellow >= 2 || red === 1;
@@ -1657,7 +1657,7 @@ async function mzRenderFootballPdf(data) {
     const chronoLogs = [...logs].reverse();
 
     function parseLog(l) {
-      const typ  = (l.action_type || "").toLowerCase();
+      const typ  = (l.event_type || "").toLowerCase();
       const desc = l.description || "";
 
       if (typ === "undo") return null;
@@ -2315,7 +2315,7 @@ async function mzRenderFootballFillForm(data, body, squad1, squad2, t1Stats, t2S
   // ── Player card ─────────────────────────────────────────────────────────
   function buildPlayerCard(p, teamId) {
     const s       = statsMap[p.id] || {};
-    const goals   = s.total_points_in_match ?? 0;
+    const goals   = s.goals ?? s.total_points_in_match ?? 0;
     const yc      = s.yellow_cards ?? 0;
     const rc      = s.red_cards ? 1 : 0;
     const disq    = yc >= 2 || rc;
@@ -2411,9 +2411,15 @@ async function mzRenderFootballFillForm(data, body, squad1, squad2, t1Stats, t2S
     }).join("");
   }
 
-  // Initial live score from existing stats
-  const calcT1 = (squad1 || []).reduce((s, p) => s + ((statsMap[p.id] || {}).total_points_in_match || 0), 0);
-  const calcT2 = (squad2 || []).reduce((s, p) => s + ((statsMap[p.id] || {}).total_points_in_match || 0), 0);
+  // Initial live score from existing stats (football: goals, basketball: total_points_in_match)
+  const calcT1 = (squad1 || []).reduce((s, p) => {
+    const st = statsMap[p.id] || {};
+    return s + (st.goals || st.total_points_in_match || 0);
+  }, 0);
+  const calcT2 = (squad2 || []).reduce((s, p) => {
+    const st = statsMap[p.id] || {};
+    return s + (st.goals || st.total_points_in_match || 0);
+  }, 0);
 
   body.innerHTML = `
     <!-- 1. Dane meczu -->
@@ -2808,17 +2814,17 @@ async function mzSaveFootballForm(data, body, m) {
     const { data: existingLogsData } = await supabase.from('match_logs').select('*').eq('match_id', m.id).order('created_at');
     const existingLogs = existingLogsData || [];
     const nonPkLogs = existingLogs
-      .filter(l => (l.action_type || "").toLowerCase() !== "penalty")
-      .map(l => ({ type: l.action_type, description: l.description, time: l.log_time }));
+      .filter(l => (l.event_type || "").toLowerCase() !== "penalty")
+      .map(l => ({ event_type: l.event_type, description: l.description, event_time: l.event_time }));
     const pkLogs = [];
     for (const [kicks, teamName] of [[ext.pk_t1, m.team1_name], [ext.pk_t2, m.team2_name]]) {
       [...kicks].sort((a, b) => (a.kickIdx ?? 0) - (b.kickIdx ?? 0)).forEach(k => {
         if (!k.result) return;
         const label = k.result === "hit" ? "Gol" : k.result === "saved" ? "Obroniony" : "Niecelny";
         pkLogs.push({
-          type: "penalty",
+          event_type: "penalty",
           description: `Rzut karny: ${k.shooterName || "Zawodnik"} (${teamName}) \u2014 ${label}`,
-          time: null,
+          event_time: null,
         });
       });
     }
@@ -2848,11 +2854,13 @@ async function mzSaveFootballForm(data, body, m) {
   // 7. Player stats
   for (const row of body.querySelectorAll(".fb-player-row")) {
     const playerId = Number(row.dataset.playerId);
+    const teamId   = Number(row.dataset.teamId);
     const getV     = n => row.querySelector(`[name="${n}"]`)?.value;
     await supabase.from('match_player_stats').upsert({
-      match_id: m.id, player_id: playerId,
+      match_id: m.id, player_id: playerId, team_id: teamId,
+      goals:                 Number(getV("total_points_in_match") || 0),
       yellow_cards:          Number(getV("yellow_cards") || 0),
-      red_cards:              Number(getV("red_cards") || 0),
+      red_cards:             Number(getV("red_cards") || 0),
       personal_fouls: 0, technical_fouls: 0,
     }, { onConflict: 'match_id,player_id' });
   }
@@ -2974,8 +2982,8 @@ async function mzRenderFillForm(data) {
                 <span class="mz-fill-pname">${p.last_name} ${p.first_name}${p.is_captain ? " ©" : ""}
                   ${p.class_name ? `<em>${p.class_name}</em>` : ""}
                 </span>
-                <input type="number" class="mz-fill-input mz-fill-sm" name="total_points_in_match"
-                  min="0" value="${s.total_points_in_match ?? 0}" placeholder="Pkt" />
+                <input type="${isFootball ? 'number' : 'number'}" class="mz-fill-input mz-fill-sm" name="${isFootball ? 'goals' : 'total_points_in_match'}"
+                  min="0" value="${isFootball ? (s.goals ?? 0) : (s.total_points_in_match ?? 0)}" placeholder="${isFootball ? 'Gole' : 'Pkt'}" />
                 ${isFootball ? `
                   <input type="number" class="mz-fill-input mz-fill-sm" name="yellow_cards"
                     min="0" max="2" value="${s.yellow_cards ?? 0}" />
@@ -3407,10 +3415,14 @@ async function mzSaveFillForm(data) {
       const playerRows = body.querySelectorAll(".mz-fill-player-row");
       for (const row of playerRows) {
         const playerId = Number(row.dataset.playerId);
+        const teamId2  = Number(row.dataset.teamId);
         const getV = name => row.querySelector(`[name="${name}"]`)?.value;
         await supabase.from('match_player_stats').upsert({
           match_id: m.id,
           player_id: playerId,
+          team_id: teamId2,
+          goals:          Number(getV("goals") || 0),
+          assists:        Number(getV("assists") || 0),
           yellow_cards: Number(getV("yellow_cards") || 0),
           red_cards: Number(getV("red_cards") || 0),
           personal_fouls: Number(getV("personal_fouls") || 0),
@@ -3539,9 +3551,11 @@ async function mzSaveVolleyballForm(data, body, m) {
   const playerRows = body.querySelectorAll(".vb-player-row");
   for (const row of playerRows) {
     const playerId = Number(row.dataset.playerId);
+    const teamId   = Number(row.dataset.teamId);
     await supabase.from('match_player_stats').upsert({
       match_id: m.id,
       player_id: playerId,
+      team_id: teamId,
       yellow_cards: 0,
       red_cards: 0,
       personal_fouls: 0,
@@ -4073,14 +4087,16 @@ async function mzSaveBasketballForm(data, body, m) {
   const playerRows = body.querySelectorAll(".bk-player-row");
   for (const row of playerRows) {
     const playerId = Number(row.dataset.playerId);
+    const teamId   = Number(row.dataset.teamId);
     await supabase.from('match_player_stats').upsert({
       match_id: m.id,
       player_id: playerId,
+      team_id: teamId,
       points_1pt:      Number(row.querySelector("[name=points_1pt]")?.value      || 0),
       points_2pt:      Number(row.querySelector("[name=points_2pt]")?.value      || 0),
       points_3pt:      Number(row.querySelector("[name=points_3pt]")?.value      || 0),
       yellow_cards:    0,
-      red_cards:        0,
+      red_cards:       0,
       personal_fouls:  Number(row.querySelector("[name=personal_fouls]")?.value  || 0),
       technical_fouls: Number(row.querySelector("[name=technical_fouls]")?.value || 0),
     }, { onConflict: 'match_id,player_id' });

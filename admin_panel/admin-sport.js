@@ -48,7 +48,7 @@ async function loadSportView(discipline) {
     api(`/matches?discipline=${encodeURIComponent(discipline)}`),
   ]);
 
-  const fmt = fmtAll[discipline] || {};
+  const fmt = normFmt(fmtAll)[discipline] || {};
   const hasLeague = !!fmt.has_league;
   const hasCup    = !!fmt.has_cup;
 
