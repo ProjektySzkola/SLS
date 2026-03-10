@@ -12,7 +12,7 @@ const el = (tag, cls, html) => {
 };
 
 const loader  = on => $("loader").classList.toggle("hidden", !on);
-// Parsuje "YYYY-MM-DD" jako lokalną datę (unika przesunięcia UTC → -1 dzień)
+
 function parseLocalDate(str) {
   if (!str) return new Date();
   const [y, m, d] = str.slice(0, 10).split("-").map(Number);
@@ -25,21 +25,12 @@ const fmtDate = d => {
     ? parseLocalDate(d) : new Date(d);
   return parsed.toLocaleDateString("pl-PL", { day:"2-digit", month:"short" });
 };
-const fmtTime = t  => t ? t.slice(0,5) : "";
+const fmtTime = t => t ? t.slice(0,5) : "";
 
-/* ── Wynik meczu z rzutami karnymi ──────────────────────────────────────── */
-
-/**
- * Czy mecz zakończył się rzutami karnymi?
- */
 function hasShootout(m) {
   return m != null && m.shootout_t1 != null && m.shootout_t1 !== "";
 }
 
-/**
- * Wynik jednej strony: "2" lub "2 (4k.)" jeśli były rzuty karne.
- * side = 1 | 2
- */
 function fmtSideScore(m, side) {
   const base = side === 1 ? m.score_t1 : m.score_t2;
   const pen  = side === 1 ? m.shootout_t1 : m.shootout_t2;
@@ -48,9 +39,6 @@ function fmtSideScore(m, side) {
   return String(base);
 }
 
-/**
- * Wynik obu stron do inline: "1:0" lub "1:0 (3:2 k.)" jeśli były rzuty karne.
- */
 function fmtScore(m) {
   if (m.score_t1 == null) return "—";
   const base = `${m.score_t1}:${m.score_t2}`;
@@ -58,9 +46,6 @@ function fmtScore(m) {
   return base;
 }
 
-/**
- * Wynik obu stron plain-text (bez HTML) np. do title/tooltip.
- */
 function fmtScoreText(m) {
   if (m.score_t1 == null) return "—";
   const base = `${m.score_t1}:${m.score_t2}`;
@@ -68,10 +53,6 @@ function fmtScoreText(m) {
   return base;
 }
 
-/**
- * Który team wygrał uwzględniając rzuty karne?
- * Zwraca 1, 2, lub 0 (remis — tylko liga bez dogrywki).
- */
 function matchWinner(m) {
   const s1 = Number(hasShootout(m) ? m.shootout_t1 : m.score_t1 ?? 0);
   const s2 = Number(hasShootout(m) ? m.shootout_t2 : m.score_t2 ?? 0);
@@ -89,41 +70,32 @@ const DISC_EMOJI = {
   "Siatkówka":   "🏐",
 };
 
-// async function api(path) {
-//   loader(true);
-//   try {
-//     const r = await fetch(API + path);
-//     if (!r.ok) throw new Error(`HTTP ${r.status}`);
-//     return await r.json();
-//   } catch(e) {
-//     console.error("API:", e);
-//     return null;
-//   } finally {
-//     loader(false);
-//   }
-// }
-// Mapowanie endpointów → tabele Supabase
-// Używane przez api() do prostych zapytań GET
+/* ── Mapowanie prostych endpointów ──────────────────────────────────────── */
 const ENDPOINT_MAP = {
-  '/teams':              async () => {
-    const { data, error } = await supabase
-      .from('teams')
-      .select('*, players(count)');
-    if (error) return { data: null, error };
-    const flat = (data || []).map(t => ({
-      ...t,
-      player_count: t.players?.[0]?.count ?? 0,
-    }));
-    return { data: flat, error: null };
-  },
   '/people':             () => supabase.from('people').select('*'),
   '/matches':            () => supabase.from('matches_full').select('*'),
   '/tournament-format':  () => supabase.from('tournament_format').select('*'),
   '/tournament-settings':() => supabase.from('tournament_settings').select('*'),
 };
 
-// Regex do endpointów z parametrami
+/* ── matchEndpoint ──────────────────────────────────────────────────────── */
 function matchEndpoint(path) {
+
+  // /teams — z liczeniem graczy
+  if (path === '/teams') {
+    return async () => {
+      const { data, error } = await supabase
+        .from('teams')
+        .select('*, players(count)');
+      if (error) return { data: null, error };
+      const flat = (data || []).map(t => ({
+        ...t,
+        player_count: t.players?.[0]?.count ?? 0,
+      }));
+      return { data: flat, error: null };
+    };
+  }
+
   // /matches?discipline=X
   const discMatch = path.match(/^\/matches\?discipline=(.+)$/);
   if (discMatch) {
@@ -132,13 +104,15 @@ function matchEndpoint(path) {
                          .eq('discipline', disc)
                          .order('match_date').order('match_time');
   }
-  // /matches?status=Rozegrany
+
+  // /matches?status=X
   const statusMatch = path.match(/^\/matches\?status=(.+)$/);
   if (statusMatch) {
     return () => supabase.from('matches_full').select('*')
                          .eq('status', decodeURIComponent(statusMatch[1]));
   }
-  // /matches/:id — szczegóły pojedynczego meczu
+
+  // /matches/:id
   const matchId = path.match(/^\/matches\/(\d+)$/);
   if (matchId) {
     const id = parseInt(matchId[1]);
@@ -152,7 +126,6 @@ function matchEndpoint(path) {
       ]);
       const m = matchRes.data;
       if (!m) return null;
-      // Odtwórz format odpowiedzi serwera
       return {
         match: m,
         sets: setsRes.data || [],
@@ -164,13 +137,25 @@ function matchEndpoint(path) {
       };
     };
   }
+
   // /teams/:id/players
   const teamPlayers = path.match(/^\/teams\/(\d+)\/players$/);
   if (teamPlayers) {
     const tid = parseInt(teamPlayers[1]);
-    return () => supabase.from('players')
-      .select('*, people(first_name, last_name)')
-      .eq('team_id', tid);
+    return async () => {
+      const { data, error } = await supabase.from('players')
+        .select('*, people(first_name, last_name, class_name, role)')
+        .eq('team_id', tid);
+      if (error) return { data: null, error };
+      const flat = (data || []).map(p => ({
+        ...p,
+        first_name: p.people?.first_name,
+        last_name:  p.people?.last_name,
+        class_name: p.people?.class_name,
+        role:       p.people?.role,
+      }));
+      return { data: flat, error: null };
+    };
   }
 
   // /teams/:id/profile
@@ -180,7 +165,7 @@ function matchEndpoint(path) {
     return async () => {
       const [teamRes, playersRes] = await Promise.all([
         supabase.from('teams').select('*').eq('id', tid).single(),
-        supabase.from('players').select('*, people(first_name, last_name, class_name)').eq('team_id', tid),
+        supabase.from('players').select('*, people(first_name, last_name, class_name, role)').eq('team_id', tid),
       ]);
       if (teamRes.error) return null;
       return {
@@ -190,9 +175,32 @@ function matchEndpoint(path) {
           first_name: p.people?.first_name,
           last_name:  p.people?.last_name,
           class_name: p.people?.class_name,
+          role:       p.people?.role,
         })),
       };
     };
+  }
+
+  // /seeding/:discipline/liga lub /seeding/:discipline/puchar
+  const seedingTyped = path.match(/^\/seeding\/([^/]+)\/(liga|puchar)$/);
+  if (seedingTyped) {
+    const disc = decodeURIComponent(seedingTyped[1]);
+    const type = seedingTyped[2];
+    return () => supabase.from('seeding')
+      .select('*, teams(team_name, class_name)')
+      .eq('discipline', disc)
+      .eq('type', type)
+      .order('position');
+  }
+
+  // /seeding/:discipline
+  const seedingDisc = path.match(/^\/seeding\/([^/]+)$/);
+  if (seedingDisc) {
+    const disc = decodeURIComponent(seedingDisc[1]);
+    return () => supabase.from('seeding')
+      .select('*, teams(team_name, class_name)')
+      .eq('discipline', disc)
+      .order('position');
   }
 
   // Prosty endpoint bez parametrów
@@ -201,18 +209,18 @@ function matchEndpoint(path) {
   return null;
 }
 
+/* ── api() ──────────────────────────────────────────────────────────────── */
 async function api(path) {
   loader(true);
   try {
     const fn = matchEndpoint(path);
     if (!fn) return null;
     const result = await fn();
-    // Supabase zwraca { data, error } lub bezpośredni obiekt
     if (result && typeof result === 'object' && 'data' in result) {
       if (result.error) { console.error('Supabase:', result.error); return null; }
       return result.data;
     }
-    return result; // złożone zapytania zwracają już gotowy obiekt
+    return result;
   } catch(e) {
     console.error('api():', e);
     return null;
@@ -220,3 +228,20 @@ async function api(path) {
     loader(false);
   }
 }
+
+/* ── Eksport globalny ───────────────────────────────────────────────────── */
+window.supabase       = supabase;
+window.api            = api;
+window.$              = $;
+window.el             = el;
+window.loader         = loader;
+window.fmtDate        = fmtDate;
+window.fmtTime        = fmtTime;
+window.fmtScore       = fmtScore;
+window.fmtSideScore   = fmtSideScore;
+window.fmtScoreText   = fmtScoreText;
+window.matchWinner    = matchWinner;
+window.hasShootout    = hasShootout;
+window.DISC_CLASS     = DISC_CLASS;
+window.DISC_EMOJI     = DISC_EMOJI;
+window.parseLocalDate = parseLocalDate;
