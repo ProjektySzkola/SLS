@@ -2,6 +2,17 @@
    PLANOWANIE ROZGRYWEK — Calendar + Match Queue
 ════════════════════════════════════════════════════════════════════════════ */
 
+/* ── normSeed: spłaszcza rekord z tabeli seeding (join z teams) ────────── */
+function normSeed(s) {
+  return {
+    ...s,
+    id:         s.team_id ?? s.id,
+    team_name:  s.teams?.team_name  ?? s.team_name  ?? '?',
+    class_name: s.teams?.class_name ?? s.class_name ?? '',
+  };
+}
+
+
 /* ── State ─────────────────────────────────────────────────────────────── */
 let plQueue       = [];          // { id, disc, type, team1, team2, label, scheduled: {date,hour,min,court,duration} | null }
 let plScheduled   = [];          // matches already on calendar (placed from queue)
@@ -822,7 +833,7 @@ async function generateLeagueMatches(disc, fmt) {
   const groupLabels = "ABCDEFGH";
 
   const groupMap = {};
-  seeds.filter(s => s.position >= 0).forEach(t => {
+  seeds.map(normSeed).filter(s => s.position >= 0).forEach(t => {
     const gIdx = Math.floor(t.position / perGroup);
     const sIdx = t.position % perGroup;
     if (!groupMap[gIdx]) groupMap[gIdx] = [];
@@ -868,7 +879,7 @@ async function generateLeagueMatches(disc, fmt) {
 /* ── Puchar: pary z pozycji grupowych ───────────────────────────────────── */
 async function generateCupMatches(disc, fmt) {
   const cupSeeds    = await api(`/seeding/${encodeURIComponent(disc)}/puchar`);
-  const directSeeds = cupSeeds?.filter(s => s.position >= 0).sort((a,b) => a.position - b.position);
+  const directSeeds = cupSeeds?.map(normSeed).filter(s => s.position >= 0).sort((a,b) => a.position - b.position);
 
   if (directSeeds?.length >= 2) {
     let added = 0;
@@ -937,7 +948,7 @@ async function generateCupFromLeagueGroups(disc, fmt) {
   }
 
   const groupMap = {};
-  ligaSeeds.filter(s => s.position >= 0).forEach(t => {
+  ligaSeeds.map(normSeed).filter(s => s.position >= 0).forEach(t => {
     const gIdx = Math.floor(t.position / perGroup);
     if (!groupMap[gIdx]) groupMap[gIdx] = [];
     // Użyj miejsca z tabeli wyników; fallback do pozycji rozstawienia

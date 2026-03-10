@@ -216,7 +216,7 @@ async function srInitWorkspace() {
   // wgraj zapisane rozstawienie (position = indeks slotu, -1 = pula)
   if (seedRaw?.length) {
     seedRaw.filter(t => t.position >= 0 && t.position < srSlots.length).forEach(t => {
-      srSlots[t.position].team = { id: t.team_id ?? t.id, team_name: t.teams?.team_name ?? t.team_name, class_name: t.teams?.class_name ?? t.class_name };
+      srSlots[t.position].team = { id: t.id, team_name: t.team_name, class_name: t.class_name };
     });
   }
 
@@ -323,7 +323,7 @@ function srMakeChip(team, source, idxOrKey) {
   chip.innerHTML = `
     <span class="sr-chip-avatar">${initials}</span>
     <span class="sr-chip-name">${team.team_name}</span>
-    <span class="sr-chip-class">${team.class_name}</span>
+    <span class="sr-chip-class">${team.class_name ?? ''}</span>
   `;
 
   chip.addEventListener("dragstart", e => {
@@ -622,11 +622,11 @@ function srMakeSlot(slot, posLabel, compact = false) {
       <span class="sr-slot-avatar">${initials}</span>
       <div class="sr-slot-info">
         <span class="sr-slot-name">${t.team_name}</span>
-        <span class="sr-slot-class">${t.class_name}</span>
+        <span class="sr-slot-class">${t.class_name ?? ''}</span>
       </div>
       ${srLocked ? "" : '<button class="sr-slot-remove" title="Usuń">✕</button>'}
     `;
-    el.querySelector(".sr-slot-remove").addEventListener("click", e => {
+    el.querySelector(".sr-slot-remove")?.addEventListener("click", e => {
       e.stopPropagation();
       srPool.push(slot.team);
       slot.team = null;
