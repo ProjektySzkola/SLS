@@ -1051,9 +1051,9 @@ async function saveProtocol(finish = false) {
 
   // Save action logs to DB (full replace — simple and reliable)
   const logsPayload = [...S.actionLog].reverse().map(l => ({
-    type:        l.type,
+    event_type:  l.type,
     description: l.text,
-    time:        l.time,
+    event_time:  l.time,
   }));
   await apiFetch(`/matches/${S.matchId}/logs`, {
     method: "POST",

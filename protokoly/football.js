@@ -1409,6 +1409,8 @@ async function saveProtocol(finish = false) {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           match_id: S.matchId, player_id: p.id,
+          team_id: S[side].id,
+          goals: ps.goals || 0,
           yellow_cards: ps.yellow,
           red_cards: ps.red ? 1 : 0,
           personal_fouls: 0,
@@ -1478,9 +1480,9 @@ async function saveProtocol(finish = false) {
   // ── Save action log to Match_Logs ─────────────────────────────────────────
   if (S.actionLog && S.actionLog.length) {
     const logs = S.actionLog.map(a => ({
-      type:        a.type  || "info",
+      event_type:  a.type  || "info",
       description: a.text  || "",
-      time:        a.min != null ? String(a.min) : (a.time || null),
+      event_time:  a.min != null ? String(a.min) : (a.time || null),
     }));
     await apiFetch(`/matches/${S.matchId}/logs`, {
       method: "POST", headers: { "Content-Type": "application/json" },

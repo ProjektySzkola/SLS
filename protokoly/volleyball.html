@@ -349,6 +349,14 @@
 <div id="toast" class="toast hidden"></div>
 <div id="page-loader" class="page-loader hidden"><div class="spinner"></div></div>
 
-<script src="volleyball.js"></script>
+<script type="module">
+  import { supabase } from '../supabase-client.js';
+  window.supabase = supabase;
+  await new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'volleyball.js'; s.onload = res; s.onerror = rej;
+    document.body.appendChild(s);
+  });
+</script>
 </body>
 </html>

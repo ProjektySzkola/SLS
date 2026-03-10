@@ -979,6 +979,7 @@ async function saveProtocol(finish = false) {
         body: JSON.stringify({
           match_id:             S.matchId,
           player_id:            p.id,
+          team_id:              S[side].id,
           points_1pt:           ps.pts1 || 0,
           points_2pt:           ps.pts2 || 0,
           points_3pt:           ps.pts3 || 0,
@@ -991,9 +992,9 @@ async function saveProtocol(finish = false) {
 
   // ── 5. Logi meczu (idempotentne — bulk replace) ──────────────────────────
   const logs = [...S.actionLog].reverse().map(a => ({
-    type:        a.type,
+    event_type:  a.type,
     description: a.text,
-    time:        a.time,
+    event_time:  a.time,
   }));
   await apiFetch(`/matches/${S.matchId}/logs`, {
     method: "POST", headers: { "Content-Type": "application/json" },
