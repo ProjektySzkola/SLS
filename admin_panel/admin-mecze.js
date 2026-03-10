@@ -545,7 +545,7 @@ async function mzRenderPdf(data) {
       <td>${p.class_name || "—"}</td>
       <td>${p.total_points_in_match || 0}</td>
       <td>${isBasket ? (p.personal_fouls || 0) : (p.yellow_cards || 0)}</td>
-      <td>${isBasket ? (p.technical_fouls || 0) : (p.red_card ? "TAK" : "—")}</td>
+      <td>${isBasket ? (p.technical_fouls || 0) : (p.red_cards ? "TAK" : "—")}</td>
     </tr>`;
   }
 
@@ -1601,7 +1601,7 @@ async function mzRenderFootballPdf(data) {
       const cap    = p.is_captain ? " \u00a9" : "";
       const goals  = p.total_points_in_match ?? 0;
       const yellow = p.yellow_cards ?? 0;
-      const red    = p.red_card ? 1 : 0;
+      const red    = p.red_cards ? 1 : 0;
       const isDisq = yellow >= 2 || red === 1;
       const disqReason = (yellow >= 2 && red === 1) ? "wyklucz. (2 \u017c\u00f3\u0142te + czerwona)"
                        : yellow >= 2                ? "wyklucz. (2 \u017c\u00f3\u0142te kartki)"
@@ -2317,7 +2317,7 @@ async function mzRenderFootballFillForm(data, body, squad1, squad2, t1Stats, t2S
     const s       = statsMap[p.id] || {};
     const goals   = s.total_points_in_match ?? 0;
     const yc      = s.yellow_cards ?? 0;
-    const rc      = s.red_card ? 1 : 0;
+    const rc      = s.red_cards ? 1 : 0;
     const disq    = yc >= 2 || rc;
     const lineup  = teamId === m.team1_id ? lineupT1 : lineupT2;
     const playing = String(p.id) in lineup ? lineup[String(p.id)] : 1;
@@ -2326,7 +2326,7 @@ async function mzRenderFootballFillForm(data, body, squad1, squad2, t1Stats, t2S
       <div class="prot-card fb-player-row ${playing ? "" : "prot-card--bench"}" data-player-id="${p.id}" data-team-id="${teamId}">
         <input type="hidden" name="total_points_in_match" value="${goals}">
         <input type="hidden" name="yellow_cards" value="${yc}">
-        <input type="hidden" name="red_card" value="${rc}">
+        <input type="hidden" name="red_cards" value="${rc}">
         <input type="hidden" name="is_playing" value="${playing}">
         <div class="prot-card-hdr">
           <span class="prot-pname">${p.last_name} ${p.first_name}${cap}${p.class_name ? ` <em class="prot-cls">${p.class_name}</em>` : ""}</span>
@@ -2585,7 +2585,7 @@ async function mzRenderFootballFillForm(data, body, squad1, squad2, t1Stats, t2S
       if (!card) return;
       const goalsH    = card.querySelector("[name=total_points_in_match]");
       const yellowH   = card.querySelector("[name=yellow_cards]");
-      const redH      = card.querySelector("[name=red_card]");
+      const redH      = card.querySelector("[name=red_cards]");
       const playingH  = card.querySelector("[name=is_playing]");
       const goalsDp   = card.querySelector("[data-type=goals]");
       const ycDp      = card.querySelector("[data-type=yellow]");
@@ -2852,7 +2852,7 @@ async function mzSaveFootballForm(data, body, m) {
     await supabase.from('match_player_stats').upsert({
       match_id: m.id, player_id: playerId,
       yellow_cards:          Number(getV("yellow_cards") || 0),
-      red_card:              Number(getV("red_card") || 0),
+      red_cards:              Number(getV("red_cards") || 0),
       personal_fouls: 0, technical_fouls: 0,
     }, { onConflict: 'match_id,player_id' });
   }
@@ -2979,9 +2979,9 @@ async function mzRenderFillForm(data) {
                 ${isFootball ? `
                   <input type="number" class="mz-fill-input mz-fill-sm" name="yellow_cards"
                     min="0" max="2" value="${s.yellow_cards ?? 0}" />
-                  <select class="mz-fill-select mz-fill-sm" name="red_card">
-                    <option value="0" ${!s.red_card ? "selected" : ""}>—</option>
-                    <option value="1" ${s.red_card  ? "selected" : ""}>TAK</option>
+                  <select class="mz-fill-select mz-fill-sm" name="red_cards">
+                    <option value="0" ${!s.red_cards ? "selected" : ""}>—</option>
+                    <option value="1" ${s.red_cards  ? "selected" : ""}>TAK</option>
                   </select>
                 ` : ""}
                 ${isBasketball ? `
@@ -3412,7 +3412,7 @@ async function mzSaveFillForm(data) {
           match_id: m.id,
           player_id: playerId,
           yellow_cards: Number(getV("yellow_cards") || 0),
-          red_card: Number(getV("red_card") || 0),
+          red_cards: Number(getV("red_cards") || 0),
           personal_fouls: Number(getV("personal_fouls") || 0),
           technical_fouls: Number(getV("technical_fouls") || 0),
         }, { onConflict: 'match_id,player_id' });
@@ -3543,7 +3543,7 @@ async function mzSaveVolleyballForm(data, body, m) {
       match_id: m.id,
       player_id: playerId,
       yellow_cards: 0,
-      red_card: 0,
+      red_cards: 0,
       personal_fouls: 0,
       technical_fouls: 0,
     }, { onConflict: 'match_id,player_id' });
@@ -4080,7 +4080,7 @@ async function mzSaveBasketballForm(data, body, m) {
       points_2pt:      Number(row.querySelector("[name=points_2pt]")?.value      || 0),
       points_3pt:      Number(row.querySelector("[name=points_3pt]")?.value      || 0),
       yellow_cards:    0,
-      red_card:        0,
+      red_cards:        0,
       personal_fouls:  Number(row.querySelector("[name=personal_fouls]")?.value  || 0),
       technical_fouls: Number(row.querySelector("[name=technical_fouls]")?.value || 0),
     }, { onConflict: 'match_id,player_id' });

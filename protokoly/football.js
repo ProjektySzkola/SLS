@@ -1410,7 +1410,7 @@ async function saveProtocol(finish = false) {
         body: JSON.stringify({
           match_id: S.matchId, player_id: p.id,
           yellow_cards: ps.yellow,
-          red_card: ps.red ? 1 : 0,
+          red_cards: ps.red ? 1 : 0,
           personal_fouls: 0,
           technical_fouls: 0,
         }),
