@@ -1,0 +1,15 @@
+name: Keep Supabase Alive
+on:
+  schedule:
+    - cron: '0 12 */5 * *'  # co 5 dni o 12:00 UTC
+  workflow_dispatch:         # można też uruchomić ręcznie
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase
+        run: |
+          curl -s -o /dev/null -w '%{http_code}' \
+            'https://fzruwhuxbeqcbpkrxxjr.supabase.co/rest/v1/tournament_settings?select=key&limit=1' \
+            -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ6cnV3aHV4YmVxY2Jwa3J4eGpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1NDIzNzQsImV4cCI6MjA4ODExODM3NH0.Mx6tLkNlfxblGheQoq4Sil5db-1Eh3Vf-FfMZtuSSrE' \
+            -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ6cnV3aHV4YmVxY2Jwa3J4eGpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1NDIzNzQsImV4cCI6MjA4ODExODM3NH0.Mx6tLkNlfxblGheQoq4Sil5db-1Eh3Vf-FfMZtuSSrE'
