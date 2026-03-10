@@ -19,7 +19,7 @@
 
 /* ── Config ─────────────────────────────────────────────────────────────── */
 // const API = "http://localhost:3001/api";
-import { supabase } from '/supabase-client.js';
+import { supabase } from './supabase-client.js';
 
 // api() dla app.js — uproszczone, tylko odczyt
 async function api(path) {
@@ -1845,8 +1845,7 @@ async function renderWynikiTab(tab, disc, fmt, body) {
   body.innerHTML = `<div class="sv-loading"><div class="sv-loading-spin"></div>Ładowanie…</div>`;
 
   if (tab === "liga") {
-    const standingsData = await fetch(`${API}/standings-custom/${encodeURIComponent(disc)}`)
-      .then(r => r.json()).catch(() => null);
+    const standingsData = await api(`/standings-custom/${encodeURIComponent(disc)}`);
 
     body.innerHTML = "";
     const wrap = el("div","sv-league-wrap");
@@ -2780,7 +2779,7 @@ function bkMatchWinner(m) {
 async function buildBracket(containerEl, disc) {
   const [bracketData, fmtAll] = await Promise.all([
     api(`/bracket/${encodeURIComponent(disc)}`),
-    fetch(`${API}/tournament-format`).then(r=>r.json()).catch(()=>({})),
+    getFormat(),
   ]);
 
   const fmt = fmtAll[disc] || {};
@@ -3070,10 +3069,11 @@ async function buildBracket(containerEl, disc) {
 async function checkStatus() {
   const s = $("db-status");
   try {
-    const r = await fetch(`${API}/status`);
-    const d = await r.json();
-    s.textContent = d.ok ? "● Online" : "● Błąd";
-    s.className   = `db-status ${d.ok ? "ok" : "error"}`;
+    const { error } = await supabase
+      .from('tournament_settings').select('key').limit(1);
+    const ok = !error;
+    s.textContent = ok ? "● Online" : "● Błąd";
+    s.className   = `db-status ${ok ? "ok" : "error"}`;
   } catch {
     s.textContent = "● Offline"; s.className = "db-status error";
   }
@@ -3221,10 +3221,8 @@ async function renderRankingView(containerEl) {
   let settings = {}, discData = [];
   try {
     [settings, ...discData] = await Promise.all([
-      fetch(`${API}/tournament-settings`).then(r => r.ok ? r.json() : {}).catch(() => ({})),
-      ...RK_DISCS.map(d =>
-        fetch(`${API}/ranking-data/${encodeURIComponent(d.key)}`).then(r => r.json()).catch(() => null)
-      ),
+      api('/tournament-settings'),
+      ...RK_DISCS.map(d => api(`/ranking-data/${encodeURIComponent(d.key)}`)),
     ]);
   } catch {
     containerEl.innerHTML = `<div class="sv-empty">Błąd ładowania danych rankingu.</div>`;
