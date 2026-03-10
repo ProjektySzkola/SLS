@@ -128,13 +128,13 @@ async function saveTeam(teamId) {
   status.textContent = "";
 
   try {
-    const r = await fetch(`${API}/teams/${teamId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ team_name: newName, class_name: newClass }),
-    });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    const updated = await r.json();
+    const { data: updated, error } = await supabase
+      .from("teams")
+      .update({ team_name: newName, class_name: newClass })
+      .eq("id", teamId)
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
 
     // aktualizuj sidebar
     const row = document.querySelector(`.team-row[data-id="${teamId}"]`);
@@ -242,12 +242,11 @@ async function savePlayer(tr, playerId) {
   };
 
   try {
-    const r = await fetch(`${API}/players/${playerId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const { error } = await supabase
+      .from("players")
+      .update(payload)
+      .eq("id", playerId);
+    if (error) throw new Error(error.message);
     showToast("✓ Zapisano zmiany");
     btn.textContent = "✓ Zapisano";
     btn.classList.add("saved");
@@ -322,8 +321,8 @@ function confirmDeletePlayer(playerId, playerName, trEl) {
 
 async function deletePlayer(playerId, trEl) {
   try {
-    const r = await fetch(`${API}/players/${playerId}`, { method: "DELETE" });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const { error } = await supabase.from("players").delete().eq("id", playerId);
+    if (error) throw new Error(error.message);
     // animowane usunięcie wiersza
     trEl.classList.add("row-deleting");
     setTimeout(() => trEl.remove(), 350);
@@ -349,8 +348,8 @@ function confirmDeleteTeam(teamId, teamName) {
 
 async function deleteTeam(teamId) {
   try {
-    const r = await fetch(`${API}/teams/${teamId}`, { method: "DELETE" });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const { error } = await supabase.from("teams").delete().eq("id", teamId);
+    if (error) throw new Error(error.message);
     showToast("✓ Drużyna usunięta");
     // wyczyść panel
     $("team-players-header").innerHTML = `<h2>Wybierz drużynę</h2>`;
@@ -411,13 +410,12 @@ function showAddTeamModal() {
     btn.disabled = true; btn.textContent = "…";
 
     try {
-      const r = await fetch(`${API}/teams`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ team_name: name, class_name: cls }),
-      });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const team = await r.json();
+      const { data: team, error } = await supabase
+        .from("teams")
+        .insert({ team_name: name, class_name: cls || null })
+        .select()
+        .single();
+      if (error) throw new Error(error.message);
       overlay.remove();
       showToast("✓ Drużyna utworzona");
       // dołącz do listy i zaznacz
@@ -831,17 +829,17 @@ function showBulkImportModal(teamId, teamName) {
         text.textContent  = `Zapisywanie ${i + 1} / ${parsedPlayers.length} — ${p.first_name} ${p.last_name}`;
 
         try {
-          const r = await fetch(`${API}/teams/${teamId}/players`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              first_name: p.first_name,
-              last_name:  p.last_name,
-              class_name: p.class_name || "",
-              ...defaults,
-            }),
-          });
-          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          // Utwórz osobę, potem gracza
+          const { data: person, error: pe } = await supabase
+            .from("people")
+            .insert({ first_name: p.first_name, last_name: p.last_name, class_name: p.class_name || null, role: "Zawodnik" })
+            .select()
+            .single();
+          if (pe) throw new Error(pe.message);
+          const { error: plE } = await supabase
+            .from("players")
+            .insert({ team_id: teamId, person_id: person.id, ...defaults });
+          if (plE) throw new Error(plE.message);
           saved++;
         } catch (e) {
           failed++;

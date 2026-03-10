@@ -71,20 +71,23 @@ function showAddPlayerModal(teamId) {
     btn.disabled = true; btn.textContent = "…";
 
     try {
-      const r = await fetch(`${API}/players`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          team_id: teamId,
-          first_name: first, last_name: last, class_name: cls,
-          is_captain: cap, rodo_consent: rodo,
-          participation_consent: parent, entry_fee_paid: fee,
-        }),
-      });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      // Utwórz osobę, potem gracza
+      const { data: person, error: pe } = await supabase
+        .from("people")
+        .insert({ first_name: first, last_name: last, class_name: cls || null, role: "Zawodnik" })
+        .select()
+        .single();
+      if (pe) throw new Error(pe.message);
+      const { error: plE } = await supabase
+        .from("players")
+        .insert({
+          team_id: teamId, person_id: person.id,
+          is_captain: cap ? 1 : 0, rodo_consent: rodo ? 1 : 0,
+          participation_consent: parent ? 1 : 0, entry_fee_paid: fee,
+        });
+      if (plE) throw new Error(plE.message);
       overlay.remove();
       showToast("✓ Zawodnik dodany");
-      // odśwież skład drużyny
       selectTeam(teamId, $("team-players-header").querySelector("h2").textContent);
     } catch(e) {
       errEl.textContent = "Błąd: " + e.message;
@@ -743,12 +746,18 @@ async function srSave() {
     .filter(Boolean);
 
   try {
-    const r = await fetch(`${API}/seeding`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ discipline: srDisc, type: srType, seeds }),
-    });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    // Usuń stare rozstawienie dla tej dyscypliny i typu
+    const { error: delErr } = await supabase
+      .from("seeding")
+      .delete()
+      .eq("discipline", srDisc)
+      .eq("type", srType);
+    if (delErr) throw new Error(delErr.message);
+    if (seeds.length) {
+      const rows = seeds.map(s => ({ discipline: srDisc, type: srType, team_id: s.team_id, position: s.position }));
+      const { error: insErr } = await supabase.from("seeding").insert(rows);
+      if (insErr) throw new Error(insErr.message);
+    }
     srMarkClean();
     showSeedToast("✓ Rozstawienie zapisane!");
     btn.textContent = "✓ Zapisano";
@@ -786,4 +795,3 @@ function showToast(msg, isError = false) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.add("hidden"), 3000);
 }
-

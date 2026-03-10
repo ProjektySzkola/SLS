@@ -95,11 +95,11 @@ async function navigateToMatch(matchId) {
 async function checkStatus() {
   const els = [$("db-status"), $("db-status-mobile")].filter(Boolean);
   try {
-    const r = await fetch(`${API}/status`);
-    const d = await r.json();
+    const { error } = await supabase.from("tournament_settings").select("key").limit(1);
+    const ok = !error;
     els.forEach(e => {
-      e.textContent = d.ok ? "● Online" : "● Błąd";
-      e.className   = `db-status ${d.ok ? "ok" : "error"}`;
+      e.textContent = ok ? "● Online" : "● Błąd";
+      e.className   = `db-status ${ok ? "ok" : "error"}`;
     });
   } catch {
     els.forEach(e => {

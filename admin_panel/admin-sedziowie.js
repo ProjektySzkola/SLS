@@ -226,15 +226,25 @@ async function saveSpModal() {
   btn.disabled = true; btn.textContent = "Zapisywanie…";
 
   try {
-    const url    = spEditId ? `/people/${spEditId}` : "/people";
-    const method = spEditId ? "PATCH" : "POST";
-    const r = await fetch(`${API}${url}`, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ first_name, last_name, class_name: class_name||null, role }),
-    });
-    const data = await r.json();
-    if (data.error) throw new Error(data.error);
+    let data;
+    if (spEditId) {
+      const { data: upd, error } = await supabase
+        .from("people")
+        .update({ first_name, last_name, class_name: class_name||null, role })
+        .eq("id", spEditId)
+        .select()
+        .single();
+      if (error) throw new Error(error.message);
+      data = upd;
+    } else {
+      const { data: ins, error } = await supabase
+        .from("people")
+        .insert({ first_name, last_name, class_name: class_name||null, role })
+        .select()
+        .single();
+      if (error) throw new Error(error.message);
+      data = ins;
+    }
 
     // Invalidate people cache used by planning view
     plPeopleCache = null;
@@ -255,9 +265,8 @@ async function deleteSpPerson(personId, name) {
   if (!confirm(`Usunąć osobę "${name}" z systemu?\nMecze przypisane do tej osoby stracą sędziego/protokolanta.`)) return;
 
   try {
-    const r = await fetch(`${API}/people/${personId}`, { method: "DELETE" });
-    const data = await r.json();
-    if (data.error) throw new Error(data.error);
+    const { error } = await supabase.from("people").delete().eq("id", personId);
+    if (error) throw new Error(error.message);
 
     plPeopleCache = null;
     spSelectedId = null;
@@ -360,15 +369,19 @@ function renderAvailSection(personId, slots) {
     try {
       const slots = [];
       DOW_ORDER.forEach(dow => (byDay[dow] || []).forEach(r =>
-        slots.push({ day_of_week: dow, hour_start: r.hs, hour_end: r.he })
+        slots.push({ person_id: personId, day_of_week: dow, hour_start: r.hs, hour_end: r.he })
       ));
-      const r = await fetch(`${API}/people/${personId}/availability`, {
-        method: "PUT", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slots }),
-      });
-      const data = await r.json();
-      if (data.error) throw new Error(data.error);
-      plAvailCache[personId] = data.slots;
+      // Usuń stare, wstaw nowe
+      const { error: delErr } = await supabase
+        .from("people_availability")
+        .delete()
+        .eq("person_id", personId);
+      if (delErr) throw new Error(delErr.message);
+      if (slots.length) {
+        const { error: insErr } = await supabase.from("people_availability").insert(slots);
+        if (insErr) throw new Error(insErr.message);
+      }
+      plAvailCache[personId] = slots;
       if (plAvailHighlight.includes(personId)) renderCalendar();
       showSpToast("✓ Dostępność zapisana");
     } catch(e) { showSpToast("✗ " + e.message, true); }
