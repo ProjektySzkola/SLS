@@ -18,179 +18,439 @@
 })();
 
 /* ── Config ─────────────────────────────────────────────────────────────── */
-// const API = "http://localhost:3001/api";
-import { supabase } from './supabase-client.js';
+// Supabase client jest ładowany przez supabase-client.js jako moduł ES
+// i eksportuje `supabase`. Ponieważ app.js ładowany jest jako zwykły <script>,
+// pobieramy go z globalnego obiektu window (supabase-client.js ustawia window.supabase).
+// Jeśli nie istnieje, tworzymy placeholder który wypisze błąd.
+let _sb = null;
+function getSB() {
+  if (_sb) return _sb;
+  // supabase-client.js eksportuje przez window gdy type=module
+  if (window.__supabase) { _sb = window.__supabase; return _sb; }
+  console.error("Supabase client not available");
+  return null;
+}
 
-// api() dla app.js — uproszczone, tylko odczyt
+// ── Warstwa danych — wszystkie zapytania do Supabase ──────────────────────
+const DB = {
+  // MECZE
+  async getMatches({ discipline, status, match_type } = {}) {
+    let q = getSB()
+      .from("matches")
+      .select(`*, teams!matches_team1_id_fkey(team_name), team2:teams!matches_team2_id_fkey(team_name), referee:people!matches_referee_id_fkey(first_name,last_name), clerk:people!matches_clerk_id_fkey(first_name,last_name)`)
+      .order("match_date", { ascending: true })
+      .order("match_time", { ascending: true });
+    if (discipline) q = q.eq("discipline", discipline);
+    if (status)     q = q.eq("status", status);
+    if (match_type) q = q.eq("match_type", match_type);
+    const { data, error } = await q;
+    if (error) { console.error("getMatches:", error); return null; }
+    return data.map(m => DB._normalizeMatch(m));
+  },
+
+  async getMatch(id) {
+    const { data: m, error } = await getSB()
+      .from("matches")
+      .select(`*, teams!matches_team1_id_fkey(team_name), team2:teams!matches_team2_id_fkey(team_name), referee:people!matches_referee_id_fkey(first_name,last_name), clerk:people!matches_clerk_id_fkey(first_name,last_name)`)
+      .eq("id", id)
+      .single();
+    if (error) { console.error("getMatch:", error); return null; }
+
+    const [{ data: playerStats }, { data: teamStats }, { data: sets }, { data: logs }] = await Promise.all([
+      getSB().from("match_player_stats").select(`*, players!inner(is_captain, team_id, people!inner(first_name,last_name)), teams!match_player_stats_team_id_fkey(team_name)`).eq("match_id", id),
+      getSB().from("match_team_stats").select(`*, teams(team_name)`).eq("match_id", id),
+      getSB().from("volleyball_sets").select("*").eq("match_id", id).order("set_number"),
+      getSB().from("match_logs").select("*").eq("match_id", id).order("id"),
+    ]);
+
+    // Normalizuj playerStats — spłaszcz relacje
+    const ps = (playerStats || []).map(s => ({
+      ...s,
+      first_name:  s.players?.people?.first_name,
+      last_name:   s.players?.people?.last_name,
+      is_captain:  s.players?.is_captain,
+      team_name:   s.teams?.team_name,
+      player_id:   s.player_id,
+    }));
+
+    const ts = (teamStats || []).map(s => ({ ...s, team_name: s.teams?.team_name }));
+
+    const match = DB._normalizeMatch(m);
+
+    // Kwartały koszykówki
+    const quartersArray = (sets || [])
+      .filter(s => s.set_number >= 1 && s.set_number <= 5)
+      .map(s => ({ quarter: s.set_number, t1: s.points_t1 ?? null, t2: s.points_t2 ?? null, to1: s.to_t1 ?? null, to2: s.to_t2 ?? null, zm1: s.subs_t1 ?? null, zm2: s.subs_t2 ?? null }));
+    const totalTimeoutsT1 = quartersArray.reduce((a, r) => a + (r.to1 || 0), 0);
+    const totalTimeoutsT2 = quartersArray.reduce((a, r) => a + (r.to2 || 0), 0);
+    const totalSubsT1 = quartersArray.reduce((a, r) => a + (r.zm1 || 0), 0);
+    const totalSubsT2 = quartersArray.reduce((a, r) => a + (r.zm2 || 0), 0);
+
+    // Połowy piłki nożnej
+    const FOOT_PERIOD_LABELS = ["1. połowa", "2. połowa", "Dogrywka I", "Dogrywka II"];
+    const footParts = (sets || [])
+      .filter(s => s.set_number >= 1 && s.set_number <= 4)
+      .map(s => ({ label: FOOT_PERIOD_LABELS[s.set_number - 1] || `Część ${s.set_number}`, t1: s.points_t1 ?? 0, t2: s.points_t2 ?? 0, zm1: s.subs_t1 ?? 0, zm2: s.subs_t2 ?? 0 }));
+
+    const hasPenalty = match.shootout_t1 !== null && match.shootout_t2 !== null;
+    const penaltyScore = hasPenalty ? { t1: Number(match.shootout_t1), t2: Number(match.shootout_t2) } : null;
+
+    return {
+      match,
+      playerStats: ps,
+      teamStats: ts,
+      sets: sets || [],
+      logs: logs || [],
+      quarters: quartersArray,
+      quarterTotals: { to1: totalTimeoutsT1, to2: totalTimeoutsT2, zm1: totalSubsT1, zm2: totalSubsT2 },
+      footParts,
+      penaltyScore,
+    };
+  },
+
+  _normalizeMatch(m) {
+    if (!m) return m;
+    return {
+      ...m,
+      team1_name:   m.teams?.team_name   || m.team1_name,
+      team2_name:   m.team2?.team_name   || m.team2_name,
+      referee_name: m.referee ? `${m.referee.first_name} ${m.referee.last_name}` : null,
+      clerk_name:   m.clerk   ? `${m.clerk.first_name} ${m.clerk.last_name}`     : null,
+      match_date:   m.match_date ? String(m.match_date).slice(0, 10) : null,
+    };
+  },
+
+  // DRUŻYNY
+  async getTeams() {
+    const { data, error } = await getSB()
+      .from("teams")
+      .select("*, players(id)")
+      .order("team_name");
+    if (error) { console.error("getTeams:", error); return null; }
+    return data.map(t => ({ ...t, player_count: t.players?.length || 0 }));
+  },
+
+  async getTeamProfile(id) {
+    const { data: team } = await getSB().from("teams").select("*").eq("id", id).single();
+    if (!team) return null;
+
+    const { data: players } = await getSB()
+      .from("players")
+      .select(`*, people(first_name,last_name,class_name)`)
+      .eq("team_id", id)
+      .order("is_captain", { ascending: false });
+
+    const { data: matches } = await getSB()
+      .from("matches")
+      .select(`*, teams!matches_team1_id_fkey(team_name), team2:teams!matches_team2_id_fkey(team_name)`)
+      .or(`team1_id.eq.${id},team2_id.eq.${id}`)
+      .order("match_date", { ascending: true });
+
+    // Statystyki W/D/L per dyscyplina — obliczamy po stronie frontendu
+    const DISCS = ["Piłka Nożna", "Koszykówka", "Siatkówka"];
+    const discStats = {};
+    DISCS.forEach(disc => {
+      const discMatches = (matches || []).filter(m => m.discipline === disc && m.status === "Rozegrany");
+      let wins = 0, draws = 0, losses = 0;
+      discMatches.forEach(m => {
+        const s1 = m.shootout_t1 ?? m.score_t1 ?? 0;
+        const s2 = m.shootout_t2 ?? m.score_t2 ?? 0;
+        if      (m.team1_id === id && s1 > s2) wins++;
+        else if (m.team2_id === id && s2 > s1) wins++;
+        else if (s1 === s2 && m.shootout_t1 === null) draws++;
+        else losses++;
+      });
+      discStats[disc] = { wins, draws, losses };
+    });
+
+    const ps = (players || []).map(p => ({
+      ...p,
+      first_name: p.people?.first_name,
+      last_name:  p.people?.last_name,
+      class_name: p.people?.class_name,
+      player_id:  p.id,
+    }));
+
+    const ms = (matches || []).map(m => DB._normalizeMatch(m));
+
+    return { team, players: ps, matches: ms, discStats };
+  },
+
+  // KLASYFIKACJE
+  async getTopScorersDetail(discipline) {
+    const { data: mps, error } = await getSB()
+      .from("match_player_stats")
+      .select(`*, players!inner(is_captain, team_id, people!inner(first_name,last_name)), teams!match_player_stats_team_id_fkey(team_name,class_name), matches!inner(discipline,status,match_date,match_time,score_t1,score_t2,team1_id,team2_id,teams!matches_team1_id_fkey(team_name),team2:teams!matches_team2_id_fkey(team_name))`)
+      .eq("matches.discipline", discipline)
+      .eq("matches.status", "Rozegrany");
+    if (error) { console.error("getTopScorersDetail:", error); return null; }
+
+    const playerMap = {};
+    (mps || []).forEach(s => {
+      const pid = s.player_id;
+      if (!playerMap[pid]) {
+        playerMap[pid] = {
+          player_id:     pid,
+          first_name:    s.players?.people?.first_name,
+          last_name:     s.players?.people?.last_name,
+          team_name:     s.teams?.team_name,
+          class_name:    s.teams?.class_name,
+          is_captain:    s.players?.is_captain,
+          total_points:  0,
+          matches_played: 0,
+          points_1pt:    0,
+          points_2pt:    0,
+          points_3pt:    0,
+          matches:       [],
+        };
+      }
+      const pts = s.total_points_in_match ?? 0;
+      playerMap[pid].total_points   += pts;
+      playerMap[pid].matches_played += 1;
+      playerMap[pid].points_1pt     += s.points_1pt ?? 0;
+      playerMap[pid].points_2pt     += s.points_2pt ?? 0;
+      playerMap[pid].points_3pt     += s.points_3pt ?? 0;
+      playerMap[pid].matches.push({
+        match_id:              s.match_id,
+        total_points_in_match: pts,
+        points_1pt:            s.points_1pt ?? 0,
+        points_2pt:            s.points_2pt ?? 0,
+        points_3pt:            s.points_3pt ?? 0,
+        match_date:            s.matches?.match_date,
+        match_time:            s.matches?.match_time,
+        team1_name:            s.matches?.teams?.team_name,
+        team2_name:            s.matches?.team2?.team_name,
+        score_t1:              s.matches?.score_t1,
+        score_t2:              s.matches?.score_t2,
+      });
+    });
+
+    return Object.values(playerMap).sort((a, b) => b.total_points - a.total_points || (a.last_name || "").localeCompare(b.last_name || "", "pl"));
+  },
+
+  async getPlayerStats(discipline) {
+    return DB.getTopScorersDetail(discipline);
+  },
+
+  // FORMAT TURNIEJU
+  async getTournamentFormat() {
+    const { data } = await getSB().from("tournament_format").select("*");
+    const map = {};
+    const DEFAULTS = { has_league: false, has_cup: false, pts_win: 3, pts_draw: 1, pts_loss: 0, groups_count: 1, teams_per_group: 4, cup_rounds: [] };
+    ["Piłka Nożna", "Koszykówka", "Siatkówka"].forEach(d => { map[d] = { discipline: d, ...DEFAULTS }; });
+    (data || []).forEach(r => {
+      map[r.discipline] = {
+        ...DEFAULTS, ...r,
+        has_league: !!r.has_league,
+        has_cup:    !!r.has_cup,
+        cup_rounds: r.cup_rounds ? (typeof r.cup_rounds === "string" ? JSON.parse(r.cup_rounds) : r.cup_rounds) : [],
+      };
+    });
+    return map;
+  },
+
+  // USTAWIENIA TURNIEJU
+  async getTournamentSettings() {
+    const { data } = await getSB().from("tournament_settings").select("*");
+    const s = {};
+    (data || []).forEach(r => { s[r.key] = r.value; });
+    return s;
+  },
+
+  // TABELA LIGOWA
+  async getStandings(discipline) {
+    const [fmtAll, { data: seedRows }, { data: matchRows }, { data: setRows }] = await Promise.all([
+      DB.getTournamentFormat(),
+      getSB().from("seeding").select("team_id, position, teams(team_name,class_name)").eq("discipline", discipline).eq("type", "liga"),
+      getSB().from("matches").select("*").eq("discipline", discipline).eq("match_type", "liga").eq("status", "Rozegrany"),
+      discipline === "Siatkówka"
+        ? getSB().from("volleyball_sets").select("*, matches!inner(team1_id,team2_id,discipline,match_type,status)").eq("matches.discipline", "Siatkówka").eq("matches.status", "Rozegrany").eq("matches.match_type", "liga")
+        : Promise.resolve({ data: [] }),
+    ]);
+
+    const fmt = fmtAll[discipline] || {};
+    const pts_win  = fmt.pts_win  ?? 3;
+    const pts_draw = fmt.pts_draw ?? 1;
+    const pts_loss = fmt.pts_loss ?? 0;
+
+    // Zbuduj tabelę
+    const teamMap = {};
+    (seedRows || []).forEach(s => {
+      teamMap[s.team_id] = { id: s.team_id, team_name: s.teams?.team_name, class_name: s.teams?.class_name, played: 0, wins: 0, draws: 0, losses: 0, gf: 0, ga: 0 };
+    });
+
+    (matchRows || []).forEach(m => {
+      const t1 = teamMap[m.team1_id], t2 = teamMap[m.team2_id];
+      if (!t1 || !t2) return;
+      const s1 = m.shootout_t1 ?? m.score_t1 ?? 0;
+      const s2 = m.shootout_t2 ?? m.score_t2 ?? 0;
+      const g1 = m.score_t1 ?? 0, g2 = m.score_t2 ?? 0;
+      t1.played++; t2.played++;
+      t1.gf += g1; t1.ga += g2;
+      t2.gf += g2; t2.ga += g1;
+      if (s1 > s2)      { t1.wins++; t2.losses++; }
+      else if (s2 > s1) { t2.wins++; t1.losses++; }
+      else              { t1.draws++; t2.draws++; }
+    });
+
+    let result = Object.values(teamMap).map(r => ({ ...r, pts: r.wins * pts_win + r.draws * pts_draw + r.losses * pts_loss, gd: r.gf - r.ga }));
+
+    // Siatkówka — sety
+    if (discipline === "Siatkówka") {
+      const setMap = {};
+      (setRows || []).forEach(s => {
+        const t1id = s.matches?.team1_id, t2id = s.matches?.team2_id;
+        if (!t1id || !t2id) return;
+        [t1id, t2id].forEach(tid => { if (!setMap[tid]) setMap[tid] = { sw: 0, sl: 0, pf: 0, pa: 0 }; });
+        const w1 = s.points_t1 > s.points_t2;
+        setMap[t1id].sw += w1 ? 1 : 0; setMap[t1id].sl += w1 ? 0 : 1;
+        setMap[t1id].pf += s.points_t1; setMap[t1id].pa += s.points_t2;
+        setMap[t2id].sw += w1 ? 0 : 1; setMap[t2id].sl += w1 ? 1 : 0;
+        setMap[t2id].pf += s.points_t2; setMap[t2id].pa += s.points_t1;
+      });
+      result.forEach(r => {
+        const sm = setMap[r.id] || { sw: 0, sl: 0, pf: 0, pa: 0 };
+        r.gf = sm.sw; r.ga = sm.sl; r.gd = sm.sw - sm.sl;
+        r.pf = sm.pf; r.pa = sm.pa; r.pd = sm.pf - sm.pa;
+      });
+      result.sort((a, b) => b.pts - a.pts || b.gd - a.gd || (b.pd ?? 0) - (a.pd ?? 0) || (b.pf ?? 0) - (a.pf ?? 0));
+    } else {
+      result.sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
+    }
+
+    return { rows: result, format: { pts_win, pts_draw, pts_loss }, discipline };
+  },
+
+  // DRABINKA PUCHAROWA
+  async getBracket(discipline) {
+    const { data, error } = await getSB()
+      .from("matches")
+      .select(`*, teams!matches_team1_id_fkey(team_name), team2:teams!matches_team2_id_fkey(team_name)`)
+      .eq("discipline", discipline)
+      .eq("match_type", "puchar")
+      .order("match_date", { ascending: true });
+    if (error) return [];
+    const CUP_ORDER = ["1/16","1/8","1/4","Półfinał","Finał"];
+    const grouped = {};
+    (data || []).forEach(m => {
+      const norm = DB._normalizeMatch(m);
+      const r = norm.cup_round || "Inne";
+      if (!grouped[r]) grouped[r] = [];
+      grouped[r].push(norm);
+    });
+    const rounds = [];
+    CUP_ORDER.forEach(r => { if (grouped[r]) rounds.push({ round: r, matches: grouped[r] }); });
+    if (grouped["Inne"]) rounds.push({ round: "Inne", matches: grouped["Inne"] });
+    return rounds;
+  },
+
+  // DANE DO TABELI GENERALNEJ
+  async getRankingData(discipline) {
+    const [fmtAll, standingsData, bracketData] = await Promise.all([
+      DB.getTournamentFormat(),
+      DB.getStandings(discipline),
+      DB.getBracket(discipline),
+    ]);
+    const fmt = fmtAll[discipline] || {};
+    const cupRoundsRaw = fmt.cup_rounds || [];
+    const ROUND_ORDER = ["1/16","1/8","1/4","Półfinał","Finał"];
+
+    // Liga
+    const ligaResult = (standingsData?.rows || []).map((r, i) => ({ ...r, liga_rank: i + 1 }));
+
+    // Puchar
+    const cupMap = {};
+    const ensureTeam = (id, name) => { if (!cupMap[id]) cupMap[id] = { teamId: id, teamName: name, bestRoundIdx: -1, bestRound: null, wonFinal: false, reached: [] }; };
+    const allCupMatches = bracketData.flatMap(r => r.matches.map(m => ({ ...m, cup_round: r.round })));
+    allCupMatches.forEach(m => {
+      const rIdx = ROUND_ORDER.indexOf(m.cup_round);
+      ensureTeam(m.team1_id, m.team1_name);
+      ensureTeam(m.team2_id, m.team2_name);
+      [m.team1_id, m.team2_id].forEach(tid => {
+        if (rIdx > cupMap[tid].bestRoundIdx) { cupMap[tid].bestRoundIdx = rIdx; cupMap[tid].bestRound = m.cup_round; }
+        if (!cupMap[tid].reached.includes(m.cup_round)) cupMap[tid].reached.push(m.cup_round);
+      });
+      if (m.status === "Rozegrany") {
+        const s1 = m.shootout_t1 ?? m.score_t1 ?? 0, s2 = m.shootout_t2 ?? m.score_t2 ?? 0;
+        const winnerId = s1 > s2 ? m.team1_id : m.team2_id;
+        if (m.cup_round === "Finał") cupMap[winnerId].wonFinal = true;
+      }
+    });
+    const cupPlaceLabel = (rIdx, wonFinal) => {
+      if (rIdx < 0) return null;
+      const round = ROUND_ORDER[rIdx];
+      if (round === "Finał") return wonFinal ? "1." : "2.";
+      if (round === "Półfinał") return "3–4.";
+      if (round === "1/4")     return "5–8.";
+      if (round === "1/8")     return "9–16.";
+      if (round === "1/16")    return "17–32.";
+      return `${rIdx+1}.`;
+    };
+    const N_cup = Object.keys(cupMap).length;
+    const cupData = Object.values(cupMap).map(t => {
+      const rIdx = t.bestRoundIdx;
+      let Rmid = N_cup;
+      if (t.wonFinal) Rmid = 1;
+      else if (ROUND_ORDER[rIdx] === "Finał") Rmid = 2;
+      else if (rIdx >= 0) Rmid = Math.max(3, N_cup / Math.pow(2, rIdx + 1) + 2);
+      const Pb = N_cup > 0 ? Math.round(((N_cup - Rmid + 1) / N_cup) * 100 * 10) / 10 : 0;
+      return { ...t, placeLabel: cupPlaceLabel(rIdx, t.wonFinal), cupPb: Math.max(0, Pb), cupRankMid: Rmid, N_cup };
+    });
+
+    return {
+      discipline,
+      has_league: !!fmt.has_league,
+      has_cup:    !!fmt.has_cup,
+      cup_rounds: cupRoundsRaw,
+      liga: { rows: ligaResult, format: standingsData?.format || {}, total: ligaResult.length },
+      cup:  { teams: cupData, total: cupData.length, rounds: allCupMatches.map(m => m.cup_round).filter((v, i, a) => a.indexOf(v) === i) },
+    };
+  },
+
+  // STATUS
+  async checkStatus() {
+    try {
+      const { error } = await getSB().from("matches").select("id").limit(1);
+      return { ok: !error };
+    } catch { return { ok: false }; }
+  },
+};
+
+// Stara funkcja `api()` — zastępujemy przez wywołania DB.*
+// Zostawiona tylko dla fragmentów które używają openMatchDetail itp.
 async function api(path) {
   loader(true);
   try {
-    // /matches?discipline=X
-    const discMatch = path.match(/^\/matches\?discipline=(.+)$/);
-    if (discMatch) {
-      const disc = decodeURIComponent(discMatch[1]);
-      const { data } = await supabase.from('matches_full').select('*')
-        .eq('discipline', disc).order('match_date').order('match_time');
-      return data;
-    }
-    // /matches/:id — szczegóły
-    const matchId = path.match(/^\/matches\/(\d+)$/);
-    if (matchId) {
-      const id = parseInt(matchId[1]);
-      const [m, sets, ps, ts, logs] = await Promise.all([
-        supabase.from('matches_full').select('*').eq('id', id).single(),
-        supabase.from('match_periods').select('*').eq('match_id', id).order('set_number'),
-        supabase.from('player_stats_full').select('*').eq('match_id', id),
-        supabase.from('match_team_stats').select('*, teams(team_name)').eq('match_id', id),
-        supabase.from('match_logs').select('*').eq('match_id', id).order('created_at'),
-      ]);
-      if (!m.data) return null;
-      return {
-        match: m.data, sets: sets.data || [],
-        playerStats: ps.data || [],
-        teamStats: (ts.data||[]).map(x=>({...x, team_name: x.teams?.team_name})),
-        logs: logs.data || [],
-      };
-    }
-    // /tournament-format
-    if (path === '/tournament-format') {
-      const { data } = await supabase.from('tournament_format').select('*');
-      // Przekształć tablicę na obiekt { "Piłka Nożna": {...}, ... }
-      const obj = {};
-      (data||[]).forEach(r => { obj[r.discipline] = r; });
-      return obj;
-    }
-    // /standings-custom/:disc
-    const standings = path.match(/^\/standings-custom\/(.+)$/);
-    if (standings) {
-      const disc = decodeURIComponent(standings[1]);
-      const { data: fmt } = await supabase.from('tournament_format')
-        .select('*').eq('discipline', disc).single();
-      const { data: rows } = await supabase.from('standings_raw')
-        .select('*').eq('discipline', disc);
-      // Oblicz punkty ligowe w JS
-      const pts_win  = fmt?.pts_win  ?? 3;
-      const pts_draw = fmt?.pts_draw ?? 1;
-      const pts_loss = fmt?.pts_loss ?? 0;
-      const withPts = (rows||[]).map(r => ({
-        ...r,
-        gd: (r.gf||0) - (r.ga||0),
-        pts: (r.wins||0)*pts_win + (r.draws||0)*pts_draw + (r.losses||0)*pts_loss
-      })).sort((a,b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
-      return { rows: withPts, format: fmt };
-    }
-    // /bracket/:disc
-    const bracket = path.match(/^\/bracket\/(.+)$/);
-    if (bracket) {
-      const disc = decodeURIComponent(bracket[1]);
-      const { data } = await supabase.from('matches_full').select('*')
-        .eq('discipline', disc).eq('match_type', 'puchar');
-      const ROUND_ORDER = ['1/16','1/8','1/4','Półfinał','Finał'];
-      (data||[]).sort((a,b) =>
-        ROUND_ORDER.indexOf(a.cup_round) - ROUND_ORDER.indexOf(b.cup_round));
-      // Zgrupuj po rundach (format jaki oczekuje buildBracket)
-      const byRound = {};
-      (data||[]).forEach(m => {
-        if (!byRound[m.cup_round]) byRound[m.cup_round] = { round: m.cup_round, matches: [] };
-        byRound[m.cup_round].matches.push(m);
-      });
-      return Object.values(byRound);
-    }
-    // /teams
-    if (path === '/teams') {
-      const { data } = await supabase.from('teams').select('*, players(count)');
-      return (data||[]).map(t => ({
-        ...t, player_count: t.players?.[0]?.count ?? 0
-      }));
-    }
-    // /teams/:id/profile
-    const teamProfile = path.match(/^\/teams\/(\d+)\/profile$/);
-    if (teamProfile) {
-      const tid = parseInt(teamProfile[1]);
-      const [teamRes, playersRes, matchesRes] = await Promise.all([
-        supabase.from('teams').select('*').eq('id', tid).single(),
-        supabase.from('players').select('*, people(first_name, last_name)').eq('team_id', tid),
-        supabase.from('matches_full').select('*')
-          .or(`team1_id.eq.${tid},team2_id.eq.${tid}`).order('match_date'),
-      ]);
-      const team = teamRes.data;
-      const players = (playersRes.data||[]).map(p => ({
-        ...p, ...p.people, player_id: p.id
-      }));
-      const matches = matchesRes.data || [];
-      // Statystyki W/R/P per dyscyplina
-      const discStats = {};
-      ['Piłka Nożna','Koszykówka','Siatkówka'].forEach(disc => {
-        const dm = matches.filter(m => m.discipline === disc && m.status === 'Rozegrany');
-        discStats[disc] = {
-          wins:   dm.filter(m => (m.team1_id===tid ? m.score_t1 : m.score_t2) > (m.team1_id===tid ? m.score_t2 : m.score_t1)).length,
-          draws:  dm.filter(m => m.score_t1 === m.score_t2 && m.shootout_t1 == null).length,
-          losses: dm.filter(m => (m.team1_id===tid ? m.score_t1 : m.score_t2) < (m.team1_id===tid ? m.score_t2 : m.score_t1)).length,
-        };
-      });
-      return { team, players, matches, discStats };
-    }
-    // /top-scorers-detail/:disc
-    const scorers = path.match(/^\/top-scorers-detail\/(.+)$/);
-    if (scorers) {
-      const disc = decodeURIComponent(scorers[1]);
-      const { data } = await supabase.from('player_stats_full').select('*')
-        .eq('discipline', disc).eq('status', 'Rozegrany');
-      // Agreguj per zawodnik
-      const players = {};
-      (data||[]).forEach(s => {
-        if (!players[s.player_id]) players[s.player_id] = {
-          player_id: s.player_id, first_name: s.first_name, last_name: s.last_name,
-          team_name: s.team_name, class_name: s.class_name,
-          is_captain: s.is_captain, total_points: 0, matches_played: 0,
-          points_1pt: 0, points_2pt: 0, points_3pt: 0, matches: [],
-        };
-        const p = players[s.player_id];
-        p.total_points   += (s.total_points_in_match || 0);
-        p.matches_played += 1;
-        p.points_1pt     += (s.points_1pt || 0);
-        p.points_2pt     += (s.points_2pt || 0);
-        p.points_3pt     += (s.points_3pt || 0);
-        p.matches.push(s);
-      });
-      return Object.values(players).sort((a,b) => b.total_points - a.total_points);
-    }
-    // /ranking-data/:disc
-    const rankingData = path.match(/^\/ranking-data\/(.+)$/);
-    if (rankingData) {
-      const disc = decodeURIComponent(rankingData[1]);
-      const { data: fmt } = await supabase.from('tournament_format')
-        .select('*').eq('discipline', disc).single();
-      const { data: standingRows } = await supabase.from('standings_raw')
-        .select('*').eq('discipline', disc);
-      const { data: bracketMatches } = await supabase.from('matches_full')
-        .select('*').eq('discipline', disc).eq('match_type','puchar');
-      // Zwróć format kompatybilny z renderRankingView
-      return {
-        discipline: disc,
-        has_league: fmt?.has_league || false,
-        has_cup:    fmt?.has_cup    || false,
-        liga:       { rows: standingRows || [], format: fmt },
-        cup:        { teams: bracketMatches || [] },
-      };
-    }
-    // /tournament-settings
-    if (path === '/tournament-settings') {
-      const { data } = await supabase.from('tournament_settings').select('*');
-      const obj = {};
-      (data||[]).forEach(r => { obj[r.key] = r.value; });
-      return obj;
-    }
-    console.warn('api(): nieznany endpoint:', path);
-    return null;
-  } catch(e) {
-    console.error('api():', e);
-    return null;
-  } finally {
-    loader(false);
-  }
-}
+    // Parsuj path i przekieruj do odpowiedniego DB.*
+    const matchesDetail = path.match(/^\/matches\/(\d+)$/);
+    if (matchesDetail) return await DB.getMatch(matchesDetail[1]);
 
+    const matchesList = path.match(/^\/matches\?(.*)$/);
+    if (matchesList) {
+      const params = Object.fromEntries(new URLSearchParams(matchesList[1]));
+      return await DB.getMatches(params);
+    }
+
+    const topScorers = path.match(/^\/top-scorers-detail\/(.+)$/);
+    if (topScorers) return await DB.getTopScorersDetail(decodeURIComponent(topScorers[1]));
+
+    const playerStats = path.match(/^\/player-stats\/(.+)$/);
+    if (playerStats) return await DB.getPlayerStats(decodeURIComponent(playerStats[1]));
+
+    const teams = path.match(/^\/teams$/);
+    if (teams) return await DB.getTeams();
+
+    const teamProfile = path.match(/^\/teams\/(\d+)\/profile$/);
+    if (teamProfile) return await DB.getTeamProfile(+teamProfile[1]);
+
+    const bracket = path.match(/^\/bracket\/(.+)$/);
+    if (bracket) return await DB.getBracket(decodeURIComponent(bracket[1]));
+
+    console.warn("Unhandled api path:", path);
+    return null;
+  } catch(e) { console.error("api:", e); return null; }
+  finally { loader(false); }
+}
 
 /* ── State ──────────────────────────────────────────────────────────────── */
 let activeDiscipline = "Piłka Nożna";
@@ -225,17 +485,8 @@ const fmtTime = t => t ? t.slice(0,5) : "";
 const DISC_CLASS = { "Piłka Nożna":"disc-football","Koszykówka":"disc-basketball","Siatkówka":"disc-volleyball" };
 const DISC_EMOJI = { "Piłka Nożna":"⚽","Koszykówka":"🏀","Siatkówka":"🏐" };
 
-// async function api(path) {
-//   loader(true);
-//   try {
-//     const r = await fetch(API + path);
-//     if (!r.ok) throw new Error(`HTTP ${r.status}`);
-//     return await r.json();
-//   } catch(e) { console.error("API:", e); return null; }
-//   finally    { loader(false); }
-// }
 
-function emptyState(icon, msg) {
+(icon, msg) => {
   const d = el("div","empty-state");
   d.innerHTML = `<div class="icon">${icon}</div><p>${msg}</p>`;
   return d;
@@ -247,11 +498,7 @@ function emptyState(icon, msg) {
 async function getFormat(forceRefresh) {
   if (tournamentFormat && !forceRefresh) return tournamentFormat;
   try {
-    const { data } = await supabase
-      .from('tournament_format').select('*');
-    const obj = {};
-    (data||[]).forEach(r => { obj[r.discipline] = r; });
-    tournamentFormat = obj;
+    tournamentFormat = await DB.getTournamentFormat();
   } catch { tournamentFormat = {}; }
   return tournamentFormat;
 }
@@ -1845,7 +2092,7 @@ async function renderWynikiTab(tab, disc, fmt, body) {
   body.innerHTML = `<div class="sv-loading"><div class="sv-loading-spin"></div>Ładowanie…</div>`;
 
   if (tab === "liga") {
-    const standingsData = await api(`/standings-custom/${encodeURIComponent(disc)}`);
+    const standingsData = await DB.getStandings(disc);
 
     body.innerHTML = "";
     const wrap = el("div","sv-league-wrap");
@@ -2615,8 +2862,8 @@ async function loadTeamProfile(teamId) {
 
   // Pobierz statystyki szczegółowe dla wszystkich dyscyplin tej drużyny
   const [statsFoot, statsBask] = await Promise.all([
-    api(`/top-scorers-detail/${encodeURIComponent('Piłka Nożna')}`),
-    api(`/top-scorers-detail/${encodeURIComponent('Koszykówka')}`),
+    DB.getTopScorersDetail("Piłka Nożna").catch(() => []),
+    DB.getTopScorersDetail("Koszykówka").catch(() => []),
   ]);
 
   // Zbuduj mapy player_id → dane statystyczne
@@ -2778,8 +3025,8 @@ function bkMatchWinner(m) {
 
 async function buildBracket(containerEl, disc) {
   const [bracketData, fmtAll] = await Promise.all([
-    api(`/bracket/${encodeURIComponent(disc)}`),
-    getFormat(),
+    DB.getBracket(disc),
+    DB.getTournamentFormat(),
   ]);
 
   const fmt = fmtAll[disc] || {};
@@ -3069,11 +3316,9 @@ async function buildBracket(containerEl, disc) {
 async function checkStatus() {
   const s = $("db-status");
   try {
-    const { error } = await supabase
-      .from('tournament_settings').select('key').limit(1);
-    const ok = !error;
-    s.textContent = ok ? "● Online" : "● Błąd";
-    s.className   = `db-status ${ok ? "ok" : "error"}`;
+    const d = await DB.checkStatus();
+    s.textContent = d.ok ? "● Online" : "● Błąd";
+    s.className   = `db-status ${d.ok ? "ok" : "error"}`;
   } catch {
     s.textContent = "● Offline"; s.className = "db-status error";
   }
@@ -3221,8 +3466,8 @@ async function renderRankingView(containerEl) {
   let settings = {}, discData = [];
   try {
     [settings, ...discData] = await Promise.all([
-      api('/tournament-settings'),
-      ...RK_DISCS.map(d => api(`/ranking-data/${encodeURIComponent(d.key)}`)),
+      DB.getTournamentSettings().catch(() => ({})),
+      ...RK_DISCS.map(d => DB.getRankingData(d.key).catch(() => null)),
     ]);
   } catch {
     containerEl.innerHTML = `<div class="sv-empty">Błąd ładowania danych rankingu.</div>`;

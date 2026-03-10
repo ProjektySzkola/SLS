@@ -12,7 +12,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 </head>
 <body>
-  <script type="module" src="./supabase-client.js"></script>
 
   <!-- ── HEADER ─────────────────────────────────────────────────────────── -->
   <header>
@@ -148,7 +147,10 @@
 
   <div id="loader" class="loader hidden"><div class="spinner"></div></div>
 
-
-  <script type="module" src="./app.js"></script>
+  <script type="module">
+    import { supabase } from './supabase-client.js';
+    window.__supabase = supabase;
+  </script>
+  <script defer src="app.js"></script>
 </body>
 </html>
