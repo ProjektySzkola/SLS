@@ -59,7 +59,7 @@ const DB = {
     const [{ data: playerStats }, { data: teamStats }, { data: sets }, { data: logs }] = await Promise.all([
       getSB().from("match_player_stats").select(`*, players!inner(is_captain, team_id, people!inner(first_name,last_name)), teams!match_player_stats_team_id_fkey(team_name)`).eq("match_id", id),
       getSB().from("match_team_stats").select(`*, teams(team_name)`).eq("match_id", id),
-      getSB().from("volleyball_sets").select("*").eq("match_id", id).order("set_number"),
+      getSB().from("match_periods").select("*").eq("match_id", id).order("set_number"),
       getSB().from("match_logs").select("*").eq("match_id", id).order("id"),
     ]);
 
@@ -264,7 +264,7 @@ const DB = {
       getSB().from("seeding").select("team_id, position, teams(team_name,class_name)").eq("discipline", discipline).eq("type", "liga"),
       getSB().from("matches").select("*").eq("discipline", discipline).eq("match_type", "liga").eq("status", "Rozegrany"),
       discipline === "Siatkówka"
-        ? getSB().from("volleyball_sets").select("*, matches!inner(team1_id,team2_id,discipline,match_type,status)").eq("matches.discipline", "Siatkówka").eq("matches.status", "Rozegrany").eq("matches.match_type", "liga")
+        ? getSB().from("match_periods").select("*, matches!inner(team1_id,team2_id,discipline,match_type,status)").eq("matches.discipline", "Siatkówka").eq("matches.status", "Rozegrany").eq("matches.match_type", "liga")
         : Promise.resolve({ data: [] }),
     ]);
 
