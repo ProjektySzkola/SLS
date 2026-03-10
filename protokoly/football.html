@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Protokół Piłki Nożnej ⚽</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="football.css" />
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════
+     FORMULARZ PRZEDMECZOWY
+══════════════════════════════════════════════════════ -->
+<div id="view-prematch">
+
+  <header class="pm-header">
+    <a href="../admin_panel/admin.html" class="pm-back">← Panel admina</a>
+    <div class="pm-header-center">
+      <span class="pm-header-icon">⚽</span>
+      <div>
+        <h1>Protokół Piłki Nożnej</h1>
+        <p>Formularz przedmeczowy</p>
+      </div>
+    </div>
+    <button class="theme-toggle-btn" id="theme-toggle" title="Przełącz motyw">
+      <span id="theme-toggle-label">🌙</span>
+      <span class="theme-toggle-track"></span>
+    </button>
+  </header>
+
+  <div class="pm-body">
+
+    <!-- Krok 1: Wybór meczu -->
+    <section class="pm-section">
+      <div class="pm-section-title"><span class="pm-step">1</span>Wybierz mecz</div>
+      <div class="pm-filter-bar">
+        <div class="pm-search-wrap">
+          <span class="pm-search-icon">🔍</span>
+          <input type="text" id="pm-search" class="pm-search-input" placeholder="Szukaj drużyny, lokalizacji…" autocomplete="off" />
+          <button class="pm-search-clear hidden" id="pm-search-clear">✕</button>
+        </div>
+        <div class="pm-filter-chips">
+          <button class="pm-chip active" data-status="all">Wszystkie</button>
+          <button class="pm-chip" data-status="Planowany">📅 Planowane</button>
+          <button class="pm-chip" data-status="Rozegrany">✅ Rozegrane</button>
+          <button class="pm-chip" data-status="Odwołany">❌ Odwołane</button>
+        </div>
+        <div class="pm-matches-meta" id="pm-matches-meta"></div>
+      </div>
+      <div id="pm-match-list" class="pm-match-list">
+        <div class="pm-loading">Ładowanie meczów…</div>
+      </div>
+      <div class="pm-match-banner hidden" id="pm-banner"></div>
+    </section>
+
+    <!-- Krok 2: Obsada -->
+    <section class="pm-section hidden" id="pm-sec-officials">
+      <div class="pm-section-title"><span class="pm-step">2</span>Obsada meczu</div>
+      <div class="pm-officials-row">
+        <div class="pm-field">
+          <label class="pm-label">⚖️ Sędzia główny</label>
+          <select id="pm-referee" class="pm-select"><option value="">— wybierz sędziego —</option></select>
+        </div>
+        <div class="pm-field">
+          <label class="pm-label">📋 Protokolant</label>
+          <select id="pm-clerk" class="pm-select"><option value="">— wybierz protokolanta —</option></select>
+        </div>
+      </div>
+    </section>
+
+    <!-- Krok 2b: Info o rozegrnaym meczu -->
+    <section class="pm-section hidden" id="pm-sec-played-info">
+      <div class="pm-section-title" style="background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.3)">
+        <span class="pm-step" style="background:var(--yellow)">!</span>
+        <span style="color:var(--yellow)">Mecz już rozegrany — dane historyczne</span>
+      </div>
+      <div id="pm-played-info-body" class="pm-played-info-body"></div>
+    </section>
+
+    <!-- Krok 3: Składy drużyn -->
+    <section class="pm-section hidden" id="pm-sec-squads">
+      <div class="pm-section-title"><span class="pm-step">3</span>Składy drużyn</div>
+      <div class="pm-squads-grid">
+        <div class="pm-squad-col">
+          <div class="pm-squad-hdr">
+            <span id="pm-t1-name-lbl">Drużyna 1</span>
+            <button class="pm-selall-btn" id="pm-t1-selall">Zaznacz wszystkich</button>
+            <span class="pm-sel-count" id="pm-t1-count">0 / 0</span>
+          </div>
+          <div id="pm-t1-players" class="pm-players-list"></div>
+        </div>
+        <div class="pm-squad-col">
+          <div class="pm-squad-hdr">
+            <span id="pm-t2-name-lbl">Drużyna 2</span>
+            <button class="pm-selall-btn" id="pm-t2-selall">Zaznacz wszystkich</button>
+            <span class="pm-sel-count" id="pm-t2-count">0 / 0</span>
+          </div>
+          <div id="pm-t2-players" class="pm-players-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="pm-footer-row">
+      <div class="pm-validation" id="pm-validation"></div>
+      <button class="pm-start-btn" id="pm-start-btn" disabled>⚽ Rozpocznij mecz</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     WIDOK MECZU
+══════════════════════════════════════════════════════ -->
+<div id="view-match" class="hidden">
+
+  <!-- Topbar -->
+  <div class="match-topbar">
+    <div class="topbar-left">
+      <span class="topbar-clock" id="topbar-clock">--:--</span>
+      <span class="topbar-date"  id="topbar-date"></span>
+    </div>
+    <div class="topbar-center">
+      <span class="topbar-match-label" id="topbar-match-label">Piłka nożna</span>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-status" id="topbar-status">W toku</span>
+      <button class="topbar-exit" id="topbar-exit">✕ Wyjdź</button>
+    </div>
+  </div>
+
+  <!-- ── TABLICA WYNIKOWA ── -->
+  <div class="scoreboard-row">
+    <div class="sb-team sb-team--left">
+      <div class="sb-name" id="sb-t1-name">—</div>
+      <div class="sb-cls"  id="sb-t1-cls"></div>
+    </div>
+    <div class="sb-center">
+      <div class="sb-score">
+        <span class="sb-score-val" id="sb-score-t1">0</span>
+        <span class="sb-score-sep">:</span>
+        <span class="sb-score-val" id="sb-score-t2">0</span>
+      </div>
+      <div class="sb-period-label" id="sb-period-label">I połowa</div>
+      <div class="sb-mode-badge" id="sb-mode-badge"></div>
+    </div>
+    <div class="sb-team sb-team--right">
+      <div class="sb-name" id="sb-t2-name">—</div>
+      <div class="sb-cls"  id="sb-t2-cls"></div>
+    </div>
+  </div>
+
+  <!-- ── ZEGAR I POŁOWY ── -->
+  <div class="clock-row">
+
+    <!-- Zegar meczu -->
+    <div class="clock-panel">
+      <div class="clock-display" id="clock-display">00:00</div>
+      <div class="clock-btns">
+        <button class="clock-btn clock-btn--main" id="btn-clock-toggle">▶ Start</button>
+        <button class="clock-btn" id="btn-clock-reset">⟳ Reset</button>
+        <button class="clock-btn" id="btn-clock-manual">✏️ Ustaw</button>
+      </div>
+      <div class="clock-adj-row">
+        <span class="clock-adj-label">Korekta:</span>
+        <button class="clock-adj-btn" data-sec="-60">−1:00</button>
+        <button class="clock-adj-btn" data-sec="-10">−0:10</button>
+        <button class="clock-adj-btn" data-sec="-1">−1s</button>
+        <button class="clock-adj-btn" data-sec="1">+1s</button>
+        <button class="clock-adj-btn" data-sec="10">+0:10</button>
+        <button class="clock-adj-btn" data-sec="60">+1:00</button>
+      </div>
+    </div>
+
+    <!-- Zarządzanie połowami -->
+    <div class="periods-panel">
+      <div class="periods-label">Tryb gry</div>
+      <div class="periods-list" id="periods-list"></div>
+      <div class="periods-btns">
+        <button class="period-ctrl-btn" id="btn-next-period">Następna połowa →</button>
+        <button class="period-ctrl-btn period-ctrl-btn--et" id="btn-extra-time">⏱ Dogrywka</button>
+        <button class="period-ctrl-btn period-ctrl-btn--pk" id="btn-penalties">⚽ Rzuty karne</button>
+      </div>
+    </div>
+
+    <!-- Historia wyników per połowa -->
+    <div class="period-scores-panel">
+      <div class="periods-label">Wyniki połów</div>
+      <div id="period-scores-table" class="period-scores-table"></div>
+    </div>
+
+  </div>
+
+  <!-- ── SEKCJA DRUŻYN I ZAWODNIKÓW ── -->
+  <div class="match-main">
+
+    <!-- Drużyna 1: panel sterowania -->
+    <div class="team-ctrl-col team-ctrl-col--left">
+      <div class="team-ctrl-panel">
+        <div class="tcp-name" id="tcp-t1-name">—</div>
+        <div class="tcp-counters-grid">
+          <div class="tcp-counter-item">
+            <div class="tcp-counter-val" id="tc-t1-goals">0</div>
+            <div class="tcp-counter-lbl">Gole</div>
+          </div>
+          <div class="tcp-counter-item">
+            <div class="tcp-counter-val" id="tc-t1-subs">0</div>
+            <div class="tcp-counter-lbl">Zmiany</div>
+          </div>
+          <div class="tcp-counter-item">
+            <div class="tcp-counter-val" id="tc-t1-yellow">0</div>
+            <div class="tcp-counter-lbl">Żółte</div>
+          </div>
+          <div class="tcp-counter-item">
+            <div class="tcp-counter-val" id="tc-t1-red">0</div>
+            <div class="tcp-counter-lbl">Czerwone</div>
+          </div>
+        </div>
+        <div class="tcp-action-btns">
+          <button class="tcp-btn" id="btn-t1-sub">🔄 Zmiana</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Zawodnicy T1 -->
+    <div class="players-col players-col--t1">
+      <div class="players-col-hdr" id="players-t1-hdr">Drużyna 1</div>
+      <div class="players-col-body" id="players-t1-body"></div>
+    </div>
+
+    <!-- Zawodnicy T2 -->
+    <div class="players-col players-col--t2">
+      <div class="players-col-hdr" id="players-t2-hdr">Drużyna 2</div>
+      <div class="players-col-body" id="players-t2-body"></div>
+    </div>
+
+    <!-- Drużyna 2: panel sterowania -->
+    <div class="team-ctrl-col team-ctrl-col--right">
+      <div class="team-ctrl-panel">
+        <div class="tcp-name" id="tcp-t2-name">—</div>
+        <div class="tcp-counters-grid">
+          <div class="tcp-counter-item">
+            <div class="tcp-counter-val" id="tc-t2-goals">0</div>
+            <div class="tcp-counter-lbl">Gole</div>
+          </div>
+          <div class="tcp-counter-item">
+            <div class="tcp-counter-val" id="tc-t2-subs">0</div>
+            <div class="tcp-counter-lbl">Zmiany</div>
+          </div>
+          <div class="tcp-counter-item">
+            <div class="tcp-counter-val" id="tc-t2-yellow">0</div>
+            <div class="tcp-counter-lbl">Żółte</div>
+          </div>
+          <div class="tcp-counter-item">
+            <div class="tcp-counter-val" id="tc-t2-red">0</div>
+            <div class="tcp-counter-lbl">Czerwone</div>
+          </div>
+        </div>
+        <div class="tcp-action-btns">
+          <button class="tcp-btn" id="btn-t2-sub">🔄 Zmiana</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /.match-main -->
+
+  <!-- ══════════════════════════════════════════════════════
+       RZUTY KARNE — ETAP KONFIGURACJI
+  ══════════════════════════════════════════════════════ -->
+  <div class="pk-setup hidden" id="pk-setup">
+    <div class="pk-setup-header">
+      <span class="pk-setup-title">⚽ Konfiguracja rzutów karnych</span>
+      <span class="pk-setup-sub" id="pk-setup-sub">Wybierz strzelców, bramkarzy i kolejność</span>
+    </div>
+
+    <div class="pk-setup-body">
+
+      <!-- Kto zaczyna -->
+      <div class="pk-setup-startwrap">
+        <div class="pk-setup-label">Kto wykonuje pierwszy strzał?</div>
+        <div class="pk-start-btns">
+          <button class="pk-start-btn active" id="pk-start-t1" data-side="t1">—</button>
+          <button class="pk-start-btn" id="pk-start-t2" data-side="t2">—</button>
+        </div>
+      </div>
+
+      <!-- Dwie kolumny drużyn -->
+      <div class="pk-setup-teams">
+
+        <!-- T1 -->
+        <div class="pk-setup-team-col">
+          <div class="pk-setup-team-hdr">
+            <span id="pk-setup-t1-name">Drużyna 1</span>
+            <span class="pk-setup-count" id="pk-setup-t1-count">0 / 0</span>
+          </div>
+
+          <!-- Bramkarz -->
+          <div class="pk-setup-section-lbl">🥅 Bramkarz</div>
+          <div id="pk-setup-t1-gk" class="pk-setup-gk-row">
+            <div class="pk-setup-gk-empty">Wybierz bramkarza ↓</div>
+          </div>
+
+          <!-- Strzelcy -->
+          <div class="pk-setup-section-lbl">⚽ Strzelcy <span id="pk-t1-shooter-count" class="pk-setup-count-sm"></span></div>
+          <div id="pk-setup-t1-shooters" class="pk-setup-shooter-list"></div>
+
+          <!-- Dostępni zawodnicy -->
+          <div class="pk-setup-section-lbl">Zawodnicy</div>
+          <div id="pk-setup-t1-players" class="pk-setup-player-pool"></div>
+        </div>
+
+        <!-- T2 -->
+        <div class="pk-setup-team-col">
+          <div class="pk-setup-team-hdr">
+            <span id="pk-setup-t2-name">Drużyna 2</span>
+            <span class="pk-setup-count" id="pk-setup-t2-count">0 / 0</span>
+          </div>
+
+          <div class="pk-setup-section-lbl">🥅 Bramkarz</div>
+          <div id="pk-setup-t2-gk" class="pk-setup-gk-row">
+            <div class="pk-setup-gk-empty">Wybierz bramkarza ↓</div>
+          </div>
+
+          <div class="pk-setup-section-lbl">⚽ Strzelcy <span id="pk-t2-shooter-count" class="pk-setup-count-sm"></span></div>
+          <div id="pk-setup-t2-shooters" class="pk-setup-shooter-list"></div>
+
+          <div class="pk-setup-section-lbl">Zawodnicy</div>
+          <div id="pk-setup-t2-players" class="pk-setup-player-pool"></div>
+        </div>
+
+      </div><!-- /.pk-setup-teams -->
+
+      <div class="pk-setup-footer">
+        <div class="pk-setup-validation" id="pk-setup-validation"></div>
+        <button class="pk-setup-go-btn" id="pk-setup-go" disabled>⚽ Rozpocznij konkurs rzutów →</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       RZUTY KARNE — ETAP AKTYWNY
+  ══════════════════════════════════════════════════════ -->
+  <div class="pk-active hidden" id="pk-active">
+
+    <!-- Tablica wynikowa -->
+    <div class="pk-active-header">
+      <div class="pk-active-team-score">
+        <div class="pk-active-team-name" id="pk-active-t1-name">—</div>
+        <div class="pk-active-score" id="pk-active-score-t1">0</div>
+      </div>
+      <div class="pk-active-center">
+        <div class="pk-active-sep">:</div>
+        <div class="pk-active-round-label" id="pk-active-round-label">Rzut 1</div>
+      </div>
+      <div class="pk-active-team-score pk-active-team-score--right">
+        <div class="pk-active-score" id="pk-active-score-t2">0</div>
+        <div class="pk-active-team-name" id="pk-active-t2-name">—</div>
+      </div>
+    </div>
+
+    <!-- Seria rzutów — dots -->
+    <div class="pk-active-series">
+      <div class="pk-series-col">
+        <div class="pk-series-label" id="pk-series-t1-lbl">—</div>
+        <div class="pk-dots-row" id="pk-dots-t1"></div>
+      </div>
+      <div class="pk-series-vs">VS</div>
+      <div class="pk-series-col pk-series-col--right">
+        <div class="pk-series-label" id="pk-series-t2-lbl">—</div>
+        <div class="pk-dots-row" id="pk-dots-t2"></div>
+      </div>
+    </div>
+
+    <!-- Aktualny strzał -->
+    <div class="pk-kick-card" id="pk-kick-card">
+      <div class="pk-kick-phase" id="pk-kick-phase">Strzał</div>
+      <div class="pk-kick-main">
+        <div class="pk-kick-shooter-wrap">
+          <div class="pk-kick-role">⚽ Strzelec</div>
+          <div class="pk-kick-name" id="pk-kick-shooter-name">—</div>
+          <div class="pk-kick-team" id="pk-kick-shooter-team">—</div>
+        </div>
+        <div class="pk-kick-arrow">→</div>
+        <div class="pk-kick-gk-wrap">
+          <div class="pk-kick-role">🥅 Bramkarz</div>
+          <div class="pk-kick-name" id="pk-kick-gk-name">—</div>
+          <div class="pk-kick-team" id="pk-kick-gk-team">—</div>
+        </div>
+      </div>
+      <div class="pk-kick-btns">
+        <button class="pk-kick-btn pk-kick-btn--hit" id="btn-pk-hit">✓ Trafiony</button>
+        <button class="pk-kick-btn pk-kick-btn--miss" id="btn-pk-miss">✗ Niecelny / Obroniony</button>
+      </div>
+    </div>
+
+    <!-- Wynik zakończony -->
+    <div class="pk-finished-card hidden" id="pk-finished-card">
+      <div class="pk-finished-icon">🏆</div>
+      <div class="pk-finished-text" id="pk-finished-text">Zwycięzca!</div>
+      <div class="pk-finished-score" id="pk-finished-score"></div>
+    </div>
+
+    <!-- Historia rzutów -->
+    <div class="pk-history-wrap">
+      <div class="pk-history-label">Historia rzutów</div>
+      <div id="pk-history-list" class="pk-history-list"></div>
+    </div>
+
+    <!-- Cofnij / zakończ rzuty karne -->
+    <div class="pk-active-footer">
+      <button class="pk-ctrl-btn pk-ctrl-btn--undo" id="btn-pk-undo">↩ Cofnij rzut</button>
+      <button class="pk-ctrl-btn pk-ctrl-btn--finish" id="btn-pk-finish-early">🏁 Zakończ rzuty karne</button>
+    </div>
+
+  </div>
+
+  <!-- ── PROTOKÓŁ ── -->
+  <div class="protocol-row">
+
+    <!-- Notatka sędziego -->
+    <div class="proto-panel">
+      <div class="proto-panel-title">📝 Notatka sędziego</div>
+      <textarea id="referee-note" class="proto-note" placeholder="Wpisz notatki sędziego…" rows="3"></textarea>
+      <button class="proto-note-save" id="btn-save-note">💾 Zapisz notatkę</button>
+    </div>
+
+    <!-- Akcje protokołu -->
+    <div class="proto-panel proto-panel--actions">
+      <div class="proto-panel-title">⚙️ Zarządzanie</div>
+      <div class="proto-actions">
+        <button class="proto-btn proto-btn--undo"   id="btn-undo">↩ Cofnij akcję</button>
+        <button class="proto-btn proto-btn--save"   id="btn-save">💾 Zapisz protokół</button>
+        <button class="proto-btn proto-btn--finish" id="btn-finish">🏁 Zakończ mecz</button>
+      </div>
+    </div>
+
+    <!-- Log akcji -->
+    <div class="proto-panel proto-panel--log">
+      <div class="proto-panel-title">
+        📋 Historia akcji
+        <span id="log-count" class="log-badge">0</span>
+      </div>
+      <div id="action-log" class="action-log"></div>
+    </div>
+
+  </div>
+
+</div><!-- /#view-match -->
+
+<!-- ══ MODAL: Ręczne ustawienie zegara ══ -->
+<div class="modal-backdrop hidden" id="clock-modal-backdrop">
+  <div class="modal clock-modal">
+    <div class="modal-hdr">
+      <span>⏱ Ustaw czas ręcznie</span>
+      <button class="modal-close" id="clock-modal-close">✕</button>
+    </div>
+    <div class="clock-modal-body">
+      <div class="clock-manual-row">
+        <div class="clock-manual-field">
+          <label>Minuty</label>
+          <input type="number" id="clock-manual-min" class="clock-manual-input" min="0" max="999" value="0" />
+        </div>
+        <div class="clock-manual-sep">:</div>
+        <div class="clock-manual-field">
+          <label>Sekundy</label>
+          <input type="number" id="clock-manual-sec" class="clock-manual-input" min="0" max="59" value="0" />
+        </div>
+      </div>
+      <div class="confirm-btns" style="margin-top:16px">
+        <button class="modal-btn ghost"   id="clock-modal-cancel">Anuluj</button>
+        <button class="modal-btn primary" id="clock-modal-confirm">✓ Ustaw</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Zakończenie połowy ══ -->
+<div class="modal-backdrop hidden" id="period-backdrop">
+  <div class="modal confirm-modal">
+    <div class="confirm-title" id="period-modal-title">Zakończyć połowę?</div>
+    <div class="confirm-body"  id="period-modal-body"></div>
+    <div class="confirm-btns">
+      <button class="modal-btn ghost"   id="period-cancel">Anuluj</button>
+      <button class="modal-btn primary" id="period-confirm">→ Następna połowa</button>
+    </div>
+  </div>
+</div>
+
+
+<div id="toast" class="toast hidden"></div>
+
+<!-- ══ MODAL: Wyjście z protokołu ══ -->
+<div class="modal-backdrop hidden" id="exit-backdrop">
+  <div class="modal confirm-modal">
+    <div class="confirm-title">⚠️ Wyjść z protokołu?</div>
+    <div class="confirm-body" id="exit-body">Niezapisane zmiany mogą zostać utracone. Czy na pewno chcesz wrócić do panelu admina?</div>
+    <div class="confirm-btns">
+      <button class="modal-btn ghost"   id="exit-cancel">Zostań</button>
+      <button class="modal-btn exit"    id="exit-confirm">✕ Tak, wyjdź</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Zakończenie meczu ══ -->
+<div class="modal-backdrop hidden" id="finish-backdrop">
+  <div class="modal confirm-modal">
+    <div class="confirm-title">🏁 Zakończyć mecz?</div>
+    <div class="confirm-body"  id="finish-body"></div>
+    <div class="confirm-btns">
+      <button class="modal-btn ghost"   id="finish-cancel">Anuluj</button>
+      <button class="modal-btn primary" id="finish-confirm">🏁 Tak, zakończ</button>
+    </div>
+  </div>
+</div>
+
+<div id="page-loader" class="page-loader hidden"><div class="spinner"></div></div>
+
+<script src="football.js"></script>
+</body>
+</html>

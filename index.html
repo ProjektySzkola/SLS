@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f1117" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Turniej Sportowy</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+</head>
+  <script type="module" src="/supabase-client.js"></script>
+<body>
+
+  <!-- ── HEADER ─────────────────────────────────────────────────────────── -->
+  <header>
+    <div class="header-inner">
+      <div class="logo"><span class="logo-icon">🏆</span><span>Turniej Sportowy</span></div>
+
+      <!-- Desktop nav — function-first -->
+      <nav class="desktop-nav">
+        <div class="desktop-nav-group" data-sub="terminarz">
+          <button class="nav-disc-btn">📅 Terminarz</button>
+          <div class="desktop-dropdown">
+            <button class="dd-btn" data-disc="Piłka Nożna">⚽ Piłka Nożna</button>
+            <button class="dd-btn" data-disc="Koszykówka">🏀 Koszykówka</button>
+            <button class="dd-btn" data-disc="Siatkówka">🏐 Siatkówka</button>
+          </div>
+        </div>
+        <div class="desktop-nav-group" data-sub="wyniki">
+          <button class="nav-disc-btn">🏁 Wyniki</button>
+          <div class="desktop-dropdown">
+            <button class="dd-btn" data-disc="Piłka Nożna">⚽ Piłka Nożna</button>
+            <button class="dd-btn" data-disc="Koszykówka">🏀 Koszykówka</button>
+            <button class="dd-btn" data-disc="Siatkówka">🏐 Siatkówka</button>
+            <div class="dd-separator"></div>
+            <button class="dd-btn dd-btn--ranking" data-disc="ranking">🏅 Tabela Generalna</button>
+          </div>
+        </div>
+        <div class="desktop-nav-group" data-sub="zawodnicy">
+          <button class="nav-disc-btn">👤 Zawodnicy</button>
+          <div class="desktop-dropdown">
+            <button class="dd-btn" data-disc="Piłka Nożna">⚽ Piłka Nożna</button>
+            <button class="dd-btn" data-disc="Koszykówka">🏀 Koszykówka</button>
+            <button class="dd-btn" data-disc="Siatkówka">🏐 Siatkówka</button>
+          </div>
+        </div>
+        <button class="nav-disc-btn solo" data-disc="druzyny">🏅 Drużyny</button>
+        <button class="nav-disc-btn solo" data-disc="dokumenty">📄 Dokumenty</button>
+      </nav>
+
+      <button id="theme-toggle" class="theme-toggle-btn" title="Przełącz motyw">🌙</button>
+      <div id="db-status" class="db-status connecting">● Łączenie…</div>
+    </div>
+  </header>
+
+  <!-- ── MAIN ───────────────────────────────────────────────────────────── -->
+  <main id="main-content">
+    <section id="view-terminarz" class="view active">
+      <div class="view-header"><h1 id="terminarz-title">Terminarz</h1></div>
+
+      <!-- ── Filters ── -->
+      <div class="terminarz-filters" id="terminarz-filters">
+        <div class="tf-search-wrap">
+          <span class="tf-search-icon">🔍</span>
+          <input id="tf-search" class="tf-search" type="text" placeholder="Szukaj drużyny…" autocomplete="off" />
+          <button class="tf-clear-btn" id="tf-clear" title="Wyczyść">✕</button>
+        </div>
+        <div class="tf-chips">
+          <button class="tf-chip" data-filter="Planowany">Planowane</button>
+          <button class="tf-chip" data-filter="Rozegrany">Rozegrane</button>
+          <button class="tf-chip" data-filter="Odwołany">Odwołane</button>
+          <button class="tf-chip" data-filter="Walkower">Walkower</button>
+          <button class="tf-chip" data-filter="liga">Liga</button>
+          <button class="tf-chip" data-filter="puchar">Puchar</button>
+        </div>
+      </div>
+
+      <div id="terminarz-list"></div>
+    </section>
+
+    <section id="view-wyniki" class="view">
+      <div class="view-header"><h1 id="wyniki-title">Wyniki</h1></div>
+      <div id="wyniki-list"></div>
+    </section>
+
+    <section id="view-ranking" class="view">
+      <div class="view-header"><h1>🏅 Tabela Generalna</h1></div>
+      <div id="ranking-list"></div>
+    </section>
+
+    <section id="view-zawodnicy" class="view">
+      <div class="view-header"><h1 id="zawodnicy-title">Zawodnicy</h1></div>
+      <div id="zawodnicy-list" class="card-grid"></div>
+    </section>
+
+    <section id="view-druzyny" class="view">
+      <div class="view-header"><h1>Drużyny</h1></div>
+      <div class="team-profile-layout">
+        <aside class="teams-sidebar">
+          <div class="teams-sidebar-title">Drużyny</div>
+          <div id="teams-sidebar-list"></div>
+        </aside>
+        <div id="team-profile-main" class="team-profile-main"></div>
+      </div>
+    </section>
+
+    <section id="view-dokumenty" class="view">
+      <div class="view-header"><h1>Dokumenty</h1></div>
+      <div id="dokumenty-list" class="card-grid"></div>
+    </section>
+  </main>
+
+  <!-- ── MOBILE BOTTOM NAV ──────────────────────────────────────────────── -->
+  <nav class="bottom-nav">
+    <button class="bot-btn" data-sub="terminarz">
+      <span class="bot-icon">📅</span>
+      <span class="bot-label">Terminarz</span>
+    </button>
+    <button class="bot-btn" data-sub="wyniki">
+      <span class="bot-icon">🏁</span>
+      <span class="bot-label">Wyniki</span>
+    </button>
+    <button class="bot-btn" data-sub="zawodnicy">
+      <span class="bot-icon">👤</span>
+      <span class="bot-label">Zawodnicy</span>
+    </button>
+    <button class="bot-btn" data-sub="inne">
+      <span class="bot-icon">☰</span>
+      <span class="bot-label">Inne</span>
+    </button>
+  </nav>
+
+  <!-- ── MOBILE POPUP ───────────────────────────────────────────────────── -->
+  <div id="mob-popup-backdrop" class="mob-popup-backdrop hidden"></div>
+  <!-- popup jest tworzony dynamicznie przez JS i wstawiany do body -->
+
+  <!-- ── OVERLAYS ───────────────────────────────────────────────────────── -->
+  <div id="match-overlay" class="overlay hidden">
+    <div class="overlay-box">
+      <button class="overlay-close" id="close-match">✕</button>
+      <div id="match-detail-content"></div>
+    </div>
+  </div>
+
+
+  <div id="loader" class="loader hidden"><div class="spinner"></div></div>
+
+
+  <script src="app.js"></script>
+</body>
+</html>

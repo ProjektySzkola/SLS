@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Protokół Siatkówki 🏐</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="volleyball.css" />
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════
+     FORMULARZ PRZEDMECZOWY
+══════════════════════════════════════════════════════ -->
+<div id="view-prematch">
+
+  <header class="pm-header">
+    <a href="../admin_panel/admin.html" class="pm-back">← Panel admina</a>
+    <div class="pm-header-center">
+      <span class="pm-header-icon">🏐</span>
+      <div>
+        <h1>Protokół Siatkówki</h1>
+        <p>Formularz przedmeczowy</p>
+      </div>
+    </div>
+    <button class="theme-toggle-btn" id="theme-toggle" title="Przełącz motyw">
+      <span id="theme-toggle-label">🌙</span>
+      <span class="theme-toggle-track"></span>
+    </button>
+  </header>
+
+  <div class="pm-body">
+
+    <!-- ── Krok 1: Wybór meczu ── -->
+    <section class="pm-section">
+      <div class="pm-section-title"><span class="pm-step">1</span>Wybierz mecz</div>
+
+      <!-- Pasek wyszukiwania i filtrowania -->
+      <div class="pm-filter-bar">
+        <div class="pm-search-wrap">
+          <span class="pm-search-icon">🔍</span>
+          <input type="text" id="pm-search" class="pm-search-input" placeholder="Szukaj drużyny, lokalizacji…" autocomplete="off" />
+          <button class="pm-search-clear hidden" id="pm-search-clear">✕</button>
+        </div>
+        <div class="pm-filter-chips" id="pm-filter-chips">
+          <button class="pm-chip active" data-status="all">Wszystkie</button>
+          <button class="pm-chip" data-status="Planowany">📅 Planowane</button>
+          <button class="pm-chip" data-status="Rozegrany">✅ Rozegrane</button>
+          <button class="pm-chip" data-status="Odwołany">❌ Odwołane</button>
+        </div>
+        <div class="pm-matches-meta" id="pm-matches-meta"></div>
+      </div>
+
+      <div id="pm-match-list" class="pm-match-list">
+        <div class="pm-loading">Ładowanie meczów…</div>
+      </div>
+      <div class="pm-match-banner hidden" id="pm-banner"></div>
+    </section>
+
+    <!-- ── Krok 2: Obsada ── -->
+    <section class="pm-section hidden" id="pm-sec-officials">
+      <div class="pm-section-title"><span class="pm-step">2</span>Obsada meczu</div>
+      <div class="pm-officials-row">
+        <div class="pm-field">
+          <label class="pm-label">⚖️ Sędzia główny</label>
+          <select id="pm-referee" class="pm-select"><option value="">— wybierz sędziego —</option></select>
+        </div>
+        <div class="pm-field">
+          <label class="pm-label">📋 Protokolant</label>
+          <select id="pm-clerk" class="pm-select"><option value="">— wybierz protokolanta —</option></select>
+        </div>
+      </div>
+    </section>
+
+    <!-- Krok 2b: Info o rozegrnaym meczu -->
+    <section class="pm-section hidden" id="pm-sec-played-info">
+      <div class="pm-section-title" style="background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.3)">
+        <span class="pm-step" style="background:var(--yellow)">!</span>
+        <span style="color:var(--yellow)">Mecz już rozegrany — dane historyczne</span>
+      </div>
+      <div id="pm-played-info-body" class="pm-played-info-body"></div>
+    </section>
+
+    <!-- ── Krok 3+4: Składy drużyn ── -->
+    <section class="pm-section hidden" id="pm-sec-squads">
+      <div class="pm-section-title"><span class="pm-step">3</span>Składy drużyn</div>
+      <div class="pm-squads-grid">
+
+        <!-- Drużyna 1 -->
+        <div class="pm-squad-col">
+          <div class="pm-squad-hdr" id="pm-t1-hdr">
+            <span id="pm-t1-name-lbl">Drużyna 1</span>
+            <button class="pm-selall-btn" id="pm-t1-selall">Zaznacz wszystkich</button>
+            <span class="pm-sel-count" id="pm-t1-count">0 / 0</span>
+          </div>
+          <div id="pm-t1-players" class="pm-players-list"></div>
+        </div>
+
+        <!-- Drużyna 2 -->
+        <div class="pm-squad-col">
+          <div class="pm-squad-hdr" id="pm-t2-hdr">
+            <span id="pm-t2-name-lbl">Drużyna 2</span>
+            <button class="pm-selall-btn" id="pm-t2-selall">Zaznacz wszystkich</button>
+            <span class="pm-sel-count" id="pm-t2-count">0 / 0</span>
+          </div>
+          <div id="pm-t2-players" class="pm-players-list"></div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ── Start button ── -->
+    <div class="pm-footer-row">
+      <div class="pm-validation" id="pm-validation"></div>
+      <button class="pm-start-btn" id="pm-start-btn" disabled>🏐 Rozpocznij mecz</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     WIDOK MECZU
+══════════════════════════════════════════════════════ -->
+<div id="view-match" class="hidden">
+
+  <!-- Topbar -->
+  <div class="match-topbar">
+    <div class="topbar-left">
+      <span class="topbar-clock" id="topbar-clock">--:--</span>
+      <span class="topbar-date"  id="topbar-date"></span>
+    </div>
+    <div class="topbar-center">
+      <span class="topbar-match-label" id="topbar-match-label">Siatkówka</span>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-status" id="topbar-status">W toku</span>
+      <button class="topbar-exit" id="topbar-exit" title="Wróć do panelu">✕ Wyjdź</button>
+    </div>
+  </div>
+
+  <!-- ── GŁÓWNA TABLICA WYNIKOWA ── -->
+  <div class="scoreboard-row">
+    <div class="sb-team sb-team--left">
+      <div class="sb-name" id="sb-t1-name">—</div>
+      <div class="sb-cls"  id="sb-t1-cls"></div>
+    </div>
+    <div class="sb-scores">
+      <div class="sb-sets">
+        <span class="sb-sets-val" id="sb-sets-t1">0</span>
+        <span class="sb-sets-sep">:</span>
+        <span class="sb-sets-val" id="sb-sets-t2">0</span>
+      </div>
+      <div class="sb-pts">
+        <span class="sb-pts-val" id="sb-pts-t1">0</span>
+        <span class="sb-pts-sep">–</span>
+        <span class="sb-pts-val" id="sb-pts-t2">0</span>
+      </div>
+      <div class="sb-set-label" id="sb-set-label">Set 1</div>
+    </div>
+    <div class="sb-team sb-team--right">
+      <div class="sb-name" id="sb-t2-name">—</div>
+      <div class="sb-cls"  id="sb-t2-cls"></div>
+    </div>
+  </div>
+
+  <!-- ── HISTORIA SETÓW ── -->
+  <div class="set-history-row">
+    <div class="set-history-label">Historia setów:</div>
+    <div id="set-history" class="set-history"></div>
+  </div>
+
+  <!-- ── GŁÓWNA SEKCJA: 3 kolumny na desktop ── -->
+  <div class="match-grid">
+
+    <!-- KOLUMNA 1: Kontrolki T1 -->
+    <div class="match-col match-col--left">
+      <div class="team-panel team-panel--t1">
+        <div class="tp-name" id="tp-t1-name">—</div>
+        <div class="tp-serve-badge hidden" id="serve-badge-t1">🏐 Serwuje</div>
+
+        <div class="tp-counters">
+          <div class="tp-counter">
+            <div class="tp-counter-val" id="tc-t1-timeouts">0</div>
+            <div class="tp-counter-lbl">Przerwy</div>
+          </div>
+          <div class="tp-counter">
+            <div class="tp-counter-val" id="tc-t1-subs">0</div>
+            <div class="tp-counter-lbl">Zmiany</div>
+          </div>
+        </div>
+
+        <div class="tp-btn-row">
+          <button class="tp-btn tp-btn--sm" id="btn-t1-timeout" title="Przerwa">⏸ Przerwa</button>
+          <button class="tp-btn tp-btn--sm" id="btn-t1-sub"     title="Zmiana">🔄 Zmiana</button>
+        </div>
+        <button class="tp-point-btn" id="btn-t1-point">+1 punkt</button>
+      </div>
+    </div>
+
+    <!-- KOLUMNA 2: Boisko -->
+    <div class="match-col match-col--center">
+      <div class="court-wrap">
+        <div class="court-team-label" id="ct-t2-label">—</div>
+
+        <!-- T2 top (against us) -->
+        <div class="court-half court-half--t2">
+          <div class="court-grid" id="court-grid-t2"></div>
+          <button class="court-rotate-btn" id="btn-rotate-t2">↻ Obróć T2</button>
+        </div>
+
+        <div class="court-net">
+          <div class="court-net-line"></div>
+          <span class="court-net-text">— SIATKA —</span>
+          <div class="court-net-line"></div>
+        </div>
+
+        <!-- T1 bottom (our side) -->
+        <div class="court-half court-half--t1">
+          <div class="court-grid" id="court-grid-t1"></div>
+          <button class="court-rotate-btn" id="btn-rotate-t1">↻ Obróć T1</button>
+        </div>
+
+        <div class="court-team-label" id="ct-t1-label">—</div>
+      </div>
+
+      <!-- Kontrolki seta -->
+      <div class="set-ctrl-row">
+        <button class="set-ctrl-btn" id="btn-end-set">🏁 Zakończ seta</button>
+        <button class="set-ctrl-btn set-ctrl-btn--tb" id="btn-tiebreak">⚡ Tiebreak</button>
+      </div>
+    </div>
+
+    <!-- KOLUMNA 3: Kontrolki T2 -->
+    <div class="match-col match-col--right">
+      <div class="team-panel team-panel--t2">
+        <div class="tp-name" id="tp-t2-name">—</div>
+        <div class="tp-serve-badge hidden" id="serve-badge-t2">🏐 Serwuje</div>
+
+        <div class="tp-counters">
+          <div class="tp-counter">
+            <div class="tp-counter-val" id="tc-t2-timeouts">0</div>
+            <div class="tp-counter-lbl">Przerwy</div>
+          </div>
+          <div class="tp-counter">
+            <div class="tp-counter-val" id="tc-t2-subs">0</div>
+            <div class="tp-counter-lbl">Zmiany</div>
+          </div>
+        </div>
+
+        <div class="tp-btn-row">
+          <button class="tp-btn tp-btn--sm" id="btn-t2-timeout" title="Przerwa">⏸ Przerwa</button>
+          <button class="tp-btn tp-btn--sm" id="btn-t2-sub"     title="Zmiana">🔄 Zmiana</button>
+        </div>
+        <button class="tp-point-btn" id="btn-t2-point">+1 punkt</button>
+      </div>
+    </div>
+
+  </div><!-- /.match-grid -->
+
+  <!-- ── DOLNA SEKCJA: Zawodnicy + Protokół ── -->
+  <div class="bottom-grid">
+
+    <!-- Zawodnicy T1 -->
+    <div class="bottom-panel">
+      <div class="bp-title" id="bp-t1-title">Zawodnicy</div>
+      <div class="bp-players-list" id="bp-t1-list"></div>
+    </div>
+
+    <!-- Notatka + protokół -->
+    <div class="bottom-panel bottom-panel--protocol">
+      <div class="bp-title">📋 Protokół meczu</div>
+
+      <div class="proto-note-wrap">
+        <label class="proto-note-label">Notatka sędziego</label>
+        <textarea id="referee-note" class="proto-note" placeholder="Wpisz notatki…" rows="3"></textarea>
+        <button class="proto-note-save" id="btn-save-note">💾 Zapisz notatkę</button>
+      </div>
+
+      <div class="proto-actions">
+        <button class="proto-btn proto-btn--undo"   id="btn-undo">↩ Cofnij</button>
+        <button class="proto-btn proto-btn--save"   id="btn-save">💾 Zapisz</button>
+        <button class="proto-btn proto-btn--finish" id="btn-finish">🏁 Zakończ mecz</button>
+      </div>
+
+      <div class="proto-log-wrap">
+        <div class="proto-log-title">Historia akcji <span id="log-count" class="log-badge">0</span></div>
+        <div id="action-log" class="action-log"></div>
+      </div>
+    </div>
+
+    <!-- Zawodnicy T2 -->
+    <div class="bottom-panel">
+      <div class="bp-title" id="bp-t2-title">Zawodnicy</div>
+      <div class="bp-players-list" id="bp-t2-list"></div>
+    </div>
+
+  </div><!-- /.bottom-grid -->
+
+</div><!-- /#view-match -->
+
+<!-- ══ MODAL: Zamiana zawodnika na boisku ══ -->
+<div class="modal-backdrop hidden" id="swap-backdrop">
+  <div class="modal swap-modal">
+    <div class="modal-hdr">
+      <span>Pozycja <strong id="swap-pos-lbl">P1</strong></span>
+      <button class="modal-close" id="swap-close">✕</button>
+    </div>
+    <div id="swap-list" class="swap-list"></div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Zakończenie seta ══ -->
+<div class="modal-backdrop hidden" id="endset-backdrop">
+  <div class="modal confirm-modal">
+    <div class="confirm-title" id="endset-title">Zakończyć seta?</div>
+    <div class="confirm-body"  id="endset-body"></div>
+    <div class="confirm-btns">
+      <button class="modal-btn ghost"   id="endset-cancel">Anuluj</button>
+      <button class="modal-btn primary" id="endset-confirm">✓ Zakończ seta</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Wyjście z protokołu ══ -->
+<div class="modal-backdrop hidden" id="exit-backdrop">
+  <div class="modal confirm-modal">
+    <div class="confirm-title">⚠️ Wyjść z protokołu?</div>
+    <div class="confirm-body" id="exit-body">Niezapisane zmiany mogą zostać utracone.</div>
+    <div class="confirm-btns">
+      <button class="modal-btn ghost"   id="exit-cancel">Zostań</button>
+      <button class="modal-btn exit"    id="exit-confirm">✕ Tak, wyjdź</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Zakończenie meczu ══ -->
+<div class="modal-backdrop hidden" id="finish-backdrop">
+  <div class="modal confirm-modal">
+    <div class="confirm-title">Zakończyć mecz?</div>
+    <div class="confirm-body"  id="finish-body"></div>
+    <div class="confirm-btns">
+      <button class="modal-btn ghost"   id="finish-cancel">Anuluj</button>
+      <button class="modal-btn primary" id="finish-confirm">🏁 Tak, zakończ</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+<div id="page-loader" class="page-loader hidden"><div class="spinner"></div></div>
+
+<script src="volleyball.js"></script>
+</body>
+</html>
