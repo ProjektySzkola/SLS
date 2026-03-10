@@ -1,7 +1,8 @@
-/* ── flatSettings: [{key,value}] → {key: value} ──────────────────────── */
-function flatSettings(arr) {
-  if (!arr || !Array.isArray(arr)) return arr || {};
-  return Object.fromEntries(arr.map(r => [r.key, r.value]));
+/* ── flatSettings: [{key,value}] → {key: value}, lub passthrough jeśli już obiekt ── */
+function flatSettings(raw) {
+  if (!raw) return {};
+  if (Array.isArray(raw)) return Object.fromEntries(raw.map(r => [r.key, r.value]));
+  return raw; // już obiekt {key: value}
 }
 
 /* ════════════════════════════════════════════════════════════════════════════

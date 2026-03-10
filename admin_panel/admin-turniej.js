@@ -1,3 +1,10 @@
+/* ── normFmt: tablica tournament_format → mapa {disc: fmt} ──────────── */
+function normFmt(raw) {
+  if (!raw) return {};
+  if (Array.isArray(raw)) { const m = {}; raw.forEach(f => { if (f.discipline) m[f.discipline] = f; }); return m; }
+  return raw;
+}
+
 /* ════════════════════════════════════════════════════════════════════════════
    USTAWIENIA TURNIEJU
 ════════════════════════════════════════════════════════════════════════════ */
@@ -25,7 +32,7 @@ async function loadTurniej() {
     api("/tournament-format"),
     api("/tournament-settings"),
   ]);
-  adminFmtCache = fmt || {};
+  adminFmtCache = normFmt(fmt);
 
   buildDiscCards(adminFmtCache);
   buildRulesTab(settings || {});

@@ -291,12 +291,16 @@ function matchEndpoint(path) {
       .eq('discipline', disc).eq('status', 'Rozegrany');
   }
 
-  // /people/:id/stats
+  // /people/:id/stats — przez players (person_id → player_id)
   const peopleStats = path.match(/^\/people\/(\d+)\/stats$/);
   if (peopleStats) {
     const pid = parseInt(peopleStats[1]);
-    return () => supabase.from('player_stats_full').select('*')
-      .eq('person_id', pid);
+    return async () => {
+      const { data: playerRows } = await supabase.from('players').select('id').eq('person_id', pid);
+      const playerIds = (playerRows || []).map(p => p.id);
+      if (!playerIds.length) return { data: [], error: null };
+      return supabase.from('player_stats_full').select('*').in('player_id', playerIds);
+    };
   }
 
   // /people/availability?ids=X
