@@ -105,7 +105,17 @@ const DISC_EMOJI = {
 // Mapowanie endpointów → tabele Supabase
 // Używane przez api() do prostych zapytań GET
 const ENDPOINT_MAP = {
-  '/teams':              () => supabase.from('teams').select('*'),
+  '/teams':              async () => {
+    const { data, error } = await supabase
+      .from('teams')
+      .select('*, players(count)');
+    if (error) return { data: null, error };
+    const flat = (data || []).map(t => ({
+      ...t,
+      player_count: t.players?.[0]?.count ?? 0,
+    }));
+    return { data: flat, error: null };
+  },
   '/people':             () => supabase.from('people').select('*'),
   '/matches':            () => supabase.from('matches_full').select('*'),
   '/tournament-format':  () => supabase.from('tournament_format').select('*'),
@@ -158,20 +168,9 @@ function matchEndpoint(path) {
   const teamPlayers = path.match(/^\/teams\/(\d+)\/players$/);
   if (teamPlayers) {
     const tid = parseInt(teamPlayers[1]);
-    return async () => {
-      const { data, error } = await supabase.from('players')
-        .select('*, people(first_name, last_name, class_name, role)')
-        .eq('team_id', tid);
-      if (error) return { data: null, error };
-      const flat = (data || []).map(p => ({
-        ...p,
-        first_name: p.people?.first_name,
-        last_name:  p.people?.last_name,
-        class_name: p.people?.class_name,
-        role:       p.people?.role,
-      }));
-      return { data: flat, error: null };
-    };
+    return () => supabase.from('players')
+      .select('*, people(first_name, last_name)')
+      .eq('team_id', tid);
   }
 
   // /teams/:id/profile
@@ -184,7 +183,15 @@ function matchEndpoint(path) {
         supabase.from('players').select('*, people(first_name, last_name, class_name)').eq('team_id', tid),
       ]);
       if (teamRes.error) return null;
-      return { ...teamRes.data, players: playersRes.data || [] };
+      return {
+        team: teamRes.data,
+        players: (playersRes.data || []).map(p => ({
+          ...p,
+          first_name: p.people?.first_name,
+          last_name:  p.people?.last_name,
+          class_name: p.people?.class_name,
+        })),
+      };
     };
   }
 
