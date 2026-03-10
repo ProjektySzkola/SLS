@@ -5,8 +5,7 @@
 
 
 import { supabase } from './supabase-client.js';
-const API = null; // nie używana po
-// migracji
+const API = null; // nie używana po migracji
 
 /* ── Helpers ────────────────────────────────────────────────────────────── */
 const $  = id => document.getElementById(id);
