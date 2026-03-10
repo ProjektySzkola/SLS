@@ -158,9 +158,20 @@ function matchEndpoint(path) {
   const teamPlayers = path.match(/^\/teams\/(\d+)\/players$/);
   if (teamPlayers) {
     const tid = parseInt(teamPlayers[1]);
-    return () => supabase.from('players')
-      .select('*, people(first_name, last_name)')
-      .eq('team_id', tid);
+    return async () => {
+      const { data, error } = await supabase.from('players')
+        .select('*, people(first_name, last_name, class_name, role)')
+        .eq('team_id', tid);
+      if (error) return { data: null, error };
+      const flat = (data || []).map(p => ({
+        ...p,
+        first_name: p.people?.first_name,
+        last_name:  p.people?.last_name,
+        class_name: p.people?.class_name,
+        role:       p.people?.role,
+      }));
+      return { data: flat, error: null };
+    };
   }
 
   // /teams/:id/profile
@@ -177,50 +188,11 @@ function matchEndpoint(path) {
     };
   }
 
-  // /seeding/:discipline/liga lub /seeding/:discipline/puchar
-  const seedingMatch = path.match(/^\/seeding\/([^/]+)\/(liga|puchar)$/);
-  if (seedingMatch) {
-    const disc = decodeURIComponent(seedingMatch[1]);
-    const type = seedingMatch[2];
-    return () => supabase.from('seeding')
-      .select('*, teams(team_name, class_name)')
-      .eq('discipline', disc)
-      .eq('type', type)
-      .order('seed');
-  }
-
-  // /seeding/:discipline
-  const seedingDisc = path.match(/^\/seeding\/([^/]+)$/);
-  if (seedingDisc) {
-    const disc = decodeURIComponent(seedingDisc[1]);
-    return () => supabase.from('seeding')
-      .select('*, teams(team_name, class_name)')
-      .eq('discipline', disc)
-      .order('seed');
-  }
-
   // Prosty endpoint bez parametrów
   if (ENDPOINT_MAP[path]) return ENDPOINT_MAP[path];
   console.warn('api(): nieznany endpoint:', path);
   return null;
 }
-
-/* ── Eksport globalny (wymagany bo pozostałe skrypty nie są modułami) ──── */
-window.supabase       = supabase;
-window.api            = api;
-window.$              = $;
-window.el             = el;
-window.loader         = loader;
-window.fmtDate        = fmtDate;
-window.fmtTime        = fmtTime;
-window.fmtScore       = fmtScore;
-window.fmtSideScore   = fmtSideScore;
-window.fmtScoreText   = fmtScoreText;
-window.matchWinner    = matchWinner;
-window.hasShootout    = hasShootout;
-window.DISC_CLASS     = DISC_CLASS;
-window.DISC_EMOJI     = DISC_EMOJI;
-window.parseLocalDate = parseLocalDate;
 
 async function api(path) {
   loader(true);
