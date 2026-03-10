@@ -162,6 +162,21 @@ function matchEndpoint(path) {
       .select('*, people(first_name, last_name)')
       .eq('team_id', tid);
   }
+
+  // /teams/:id/profile
+  const teamProfile = path.match(/^\/teams\/(\d+)\/profile$/);
+  if (teamProfile) {
+    const tid = parseInt(teamProfile[1]);
+    return async () => {
+      const [teamRes, playersRes] = await Promise.all([
+        supabase.from('teams').select('*').eq('id', tid).single(),
+        supabase.from('players').select('*, people(first_name, last_name, class_name)').eq('team_id', tid),
+      ]);
+      if (teamRes.error) return null;
+      return { ...teamRes.data, players: playersRes.data || [] };
+    };
+  }
+
   // Prosty endpoint bez parametrów
   if (ENDPOINT_MAP[path]) return ENDPOINT_MAP[path];
   console.warn('api(): nieznany endpoint:', path);
