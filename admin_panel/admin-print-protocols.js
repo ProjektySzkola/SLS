@@ -70,8 +70,7 @@ function showPrintPanel(titleLabel, htmlContent) {
    KOSZYKÓWKA — protokół A4 poziomo, BW
 ════════════════════════════════════════════════════════════════════════════ */
 async function generateBasketballPrintProtocol() {
-  const raw = await fetch(`${API}/tournament-settings`)
-    .then(r => r.ok ? r.json() : {}).catch(() => ({}));
+  const raw = await api('/tournament-settings') ?? {}
   const s = raw || {};
 
   /* ── ustawienia ─────────────────────────────────────────────────────────── */
@@ -399,8 +398,7 @@ async function generateBasketballPrintProtocol() {
    PIŁKA NOŻNA — protokół A4 poziomo, BW
 ════════════════════════════════════════════════════════════════════════════ */
 async function generateFootballPrintProtocol() {
-  const raw = await fetch(`${API}/tournament-settings`)
-    .then(r => r.ok ? r.json() : {}).catch(() => ({}));
+  const raw = await api('/tournament-settings') ?? {}
   const s = raw || {};
 
   /* ── ustawienia ─────────────────────────────────────────────────────────── */
@@ -742,8 +740,7 @@ async function generateFootballPrintProtocol() {
      6. Dane meczu (50%) | Sędziowie (50%)
 ════════════════════════════════════════════════════════════════════════════ */
 async function generateVolleyballPrintProtocol() {
-  const raw = await fetch(`${API}/tournament-settings`)
-    .then(r => r.ok ? r.json() : {}).catch(() => ({}));
+  const raw = await api('/tournament-settings') ?? {}
   const s = raw || {};
 
   /* ── ustawienia ─────────────────────────────────────────────────────────── */
@@ -1101,8 +1098,7 @@ async function generateVolleyballPrintProtocol() {
      └─────────────────────────────────────────────────────────────────────┘
 ════════════════════════════════════════════════════════════════════════════ */
 async function generatePenaltyShootoutProtocol() {
-  const raw = await fetch(`${API}/tournament-settings`)
-    .then(r => r.ok ? r.json() : {}).catch(() => ({}));
+  const raw = await api('/tournament-settings') ?? {}
   const s = raw || {};
 
   /* ── ustawienia ─────────────────────────────────────────────────────── */
