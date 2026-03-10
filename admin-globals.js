@@ -4,7 +4,7 @@
 // w plikach admina — zostanie usunięta w kolejnych krokach
 
 
-import { supabase } from './supabase-client.js';
+import { supabase } from '../supabase-client.js';
 const API = null; // nie używana po migracji
 
 /* ── Helpers ────────────────────────────────────────────────────────────── */
