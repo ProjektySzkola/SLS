@@ -192,3 +192,19 @@ async function api(path) {
     loader(false);
   }
 }
+/* ── Eksport globalny (wymagany bo pozostałe skrypty nie są modułami) ──── */
+window.supabase       = supabase;
+window.api            = api;
+window.$              = $;
+window.el             = el;
+window.loader         = loader;
+window.fmtDate        = fmtDate;
+window.fmtTime        = fmtTime;
+window.fmtScore       = fmtScore;
+window.fmtSideScore   = fmtSideScore;
+window.fmtScoreText   = fmtScoreText;
+window.matchWinner    = matchWinner;
+window.hasShootout    = hasShootout;
+window.DISC_CLASS     = DISC_CLASS;
+window.DISC_EMOJI     = DISC_EMOJI;
+window.parseLocalDate = parseLocalDate;
