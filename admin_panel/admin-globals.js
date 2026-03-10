@@ -181,6 +181,128 @@ function matchEndpoint(path) {
     };
   }
 
+  // /standings-custom/:discipline
+  const standings = path.match(/^\/standings-custom\/(.+)$/);
+  if (standings) {
+    const disc = decodeURIComponent(standings[1]);
+    return async () => {
+      const { data: fmt } = await supabase.from('tournament_format')
+        .select('*').eq('discipline', disc).single();
+      const { data: rows } = await supabase.from('standings_raw')
+        .select('*').eq('discipline', disc);
+      const pts_win  = fmt?.pts_win  ?? 3;
+      const pts_draw = fmt?.pts_draw ?? 1;
+      const pts_loss = fmt?.pts_loss ?? 0;
+      const withPts = (rows||[]).map(r => ({
+        ...r,
+        gd:  (r.gf||0) - (r.ga||0),
+        pts: (r.wins||0)*pts_win + (r.draws||0)*pts_draw + (r.losses||0)*pts_loss,
+      })).sort((a,b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
+      return { rows: withPts, format: fmt };
+    };
+  }
+
+  // /bracket/:discipline
+  const bracket = path.match(/^\/bracket\/(.+)$/);
+  if (bracket) {
+    const disc = decodeURIComponent(bracket[1]);
+    return async () => {
+      const { data } = await supabase.from('matches_full').select('*')
+        .eq('discipline', disc).eq('match_type', 'puchar');
+      const ROUND_ORDER = ['1/16','1/8','1/4','Półfinał','Finał'];
+      (data||[]).sort((a,b) =>
+        ROUND_ORDER.indexOf(a.cup_round) - ROUND_ORDER.indexOf(b.cup_round));
+      const byRound = {};
+      (data||[]).forEach(m => {
+        if (!byRound[m.cup_round]) byRound[m.cup_round] = { round: m.cup_round, matches: [] };
+        byRound[m.cup_round].matches.push(m);
+      });
+      return Object.values(byRound);
+    };
+  }
+
+  // /top-scorers-detail/:discipline
+  const scorers = path.match(/^\/top-scorers-detail\/(.+)$/);
+  if (scorers) {
+    const disc = decodeURIComponent(scorers[1]);
+    return async () => {
+      const { data } = await supabase.from('player_stats_full').select('*')
+        .eq('discipline', disc).eq('status', 'Rozegrany');
+      const players = {};
+      (data||[]).forEach(s => {
+        if (!players[s.player_id]) players[s.player_id] = {
+          player_id: s.player_id, first_name: s.first_name, last_name: s.last_name,
+          team_name: s.team_name, class_name: s.class_name,
+          total_points: 0, matches_played: 0,
+          points_1pt: 0, points_2pt: 0, points_3pt: 0, matches: [],
+        };
+        const p = players[s.player_id];
+        p.total_points   += (s.total_points_in_match || 0);
+        p.matches_played += 1;
+        p.points_1pt     += (s.points_1pt || 0);
+        p.points_2pt     += (s.points_2pt || 0);
+        p.points_3pt     += (s.points_3pt || 0);
+        p.matches.push(s);
+      });
+      return { data: Object.values(players).sort((a,b) => b.total_points - a.total_points), error: null };
+    };
+  }
+
+  // /ranking-data/:discipline
+  const rankingData = path.match(/^\/ranking-data\/(.+)$/);
+  if (rankingData) {
+    const disc = decodeURIComponent(rankingData[1]);
+    return async () => {
+      const { data: fmt } = await supabase.from('tournament_format')
+        .select('*').eq('discipline', disc).single();
+      const { data: standingRows } = await supabase.from('standings_raw')
+        .select('*').eq('discipline', disc);
+      const { data: bracketMatches } = await supabase.from('matches_full')
+        .select('*').eq('discipline', disc).eq('match_type','puchar');
+      return {
+        discipline: disc,
+        has_league: fmt?.has_league || false,
+        has_cup:    fmt?.has_cup    || false,
+        liga:       { rows: standingRows || [], format: fmt },
+        cup:        { teams: bracketMatches || [] },
+      };
+    };
+  }
+
+  // /player-stats/:discipline
+  const playerStats = path.match(/^\/player-stats\/(.+)$/);
+  if (playerStats) {
+    const disc = decodeURIComponent(playerStats[1]);
+    return () => supabase.from('player_stats_full').select('*')
+      .eq('discipline', disc).eq('status', 'Rozegrany');
+  }
+
+  // /people/:id/stats
+  const peopleStats = path.match(/^\/people\/(\d+)\/stats$/);
+  if (peopleStats) {
+    const pid = parseInt(peopleStats[1]);
+    return () => supabase.from('player_stats_full').select('*')
+      .eq('person_id', pid);
+  }
+
+  // /people/availability?ids=X
+  const availMatch = path.match(/^\/people\/availability\?ids=(.+)$/);
+  if (availMatch) {
+    const ids = decodeURIComponent(availMatch[1]).split(',').map(Number);
+    return () => supabase.from('people_availability').select('*')
+      .in('person_id', ids);
+  }
+
+  // /matches?discipline=X&match_type=Y
+  const discTypeMatch = path.match(/^\/matches\?discipline=([^&]+)&match_type=(.+)$/);
+  if (discTypeMatch) {
+    const disc = decodeURIComponent(discTypeMatch[1]);
+    const type = decodeURIComponent(discTypeMatch[2]);
+    return () => supabase.from('matches_full').select('*')
+      .eq('discipline', disc).eq('match_type', type)
+      .order('match_date').order('match_time');
+  }
+
   // /seeding/:discipline/liga lub /seeding/:discipline/puchar
   const seedingTyped = path.match(/^\/seeding\/([^/]+)\/(liga|puchar)$/);
   if (seedingTyped) {

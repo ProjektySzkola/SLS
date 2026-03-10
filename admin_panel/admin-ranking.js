@@ -34,7 +34,7 @@ async function loadRankingView() {
 
   const discData = await Promise.all(
     RANKING_DISCS.map(d =>
-      fetch(`${API}/ranking-data/${encodeURIComponent(d.key)}`).then(r => r.json()).catch(() => null)
+      api(`/ranking-data/${encodeURIComponent(d.key)}`).catch(() => null)
     )
   );
 
@@ -63,7 +63,7 @@ async function loadRankingTab() {
     api("/tournament-settings"),
     api("/tournament-format"),
     ...RANKING_DISCS.map(d =>
-      fetch(`${API}/ranking-data/${encodeURIComponent(d.key)}`).then(r => r.json()).catch(() => null)
+      api(`/ranking-data/${encodeURIComponent(d.key)}`).catch(() => null)
     ),
   ]);
 
@@ -393,15 +393,14 @@ function wireRankingSettingsEvents(root) {
     const btn    = root.querySelector("#rk-save-btn");
     const status = root.querySelector("#rk-save-status");
     btn.disabled = true; btn.textContent = "Zapisywanie…";
-    const body = {};
+    const rows = [];
     root.querySelectorAll(".rk-slider[data-setting]").forEach(sl => {
-      body[sl.dataset.setting] = parseFloat(sl.value).toFixed(1);
+      rows.push({ key: sl.dataset.setting, value: parseFloat(sl.value).toFixed(1) });
     });
-    const res = await fetch(`${API}/tournament-settings`, {
-      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
-    });
+    const { error } = await supabase.from('tournament_settings')
+      .upsert(rows, { onConflict: 'key' });
     btn.disabled = false; btn.textContent = "💾 Zapisz wagi";
-    if (res.ok) {
+    if (!error) {
       status.textContent = "✓ Zapisano"; status.style.color = "var(--green)";
       setTimeout(() => { status.textContent = ""; }, 2500);
     } else {
