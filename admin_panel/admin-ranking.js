@@ -34,7 +34,7 @@ async function loadRankingView() {
 
   const discData = await Promise.all(
     RANKING_DISCS.map(d =>
-      api(`/ranking-data/${encodeURIComponent(d.key)}`).catch(() => null)
+      api(`/ranking-data/${encodeURIComponent(d.key)}`)
     )
   );
 
@@ -63,7 +63,7 @@ async function loadRankingTab() {
     api("/tournament-settings"),
     api("/tournament-format"),
     ...RANKING_DISCS.map(d =>
-      api(`/ranking-data/${encodeURIComponent(d.key)}`).catch(() => null)
+      api(`/ranking-data/${encodeURIComponent(d.key)}`)
     ),
   ]);
 
@@ -393,14 +393,14 @@ function wireRankingSettingsEvents(root) {
     const btn    = root.querySelector("#rk-save-btn");
     const status = root.querySelector("#rk-save-status");
     btn.disabled = true; btn.textContent = "Zapisywanie…";
-    const rows = [];
+    const body = {};
     root.querySelectorAll(".rk-slider[data-setting]").forEach(sl => {
-      rows.push({ key: sl.dataset.setting, value: parseFloat(sl.value).toFixed(1) });
+      body[sl.dataset.setting] = parseFloat(sl.value).toFixed(1);
     });
-    const { error } = await supabase.from('tournament_settings')
-      .upsert(rows, { onConflict: 'key' });
+    const rows2 = Object.entries(body).map(([key, value]) => ({ key, value: String(value ?? '') }));
+    const { error: wErr } = await supabase.from('tournament_settings').upsert(rows2, { onConflict: 'key' });
     btn.disabled = false; btn.textContent = "💾 Zapisz wagi";
-    if (!error) {
+    if (!wErr) {
       status.textContent = "✓ Zapisano"; status.style.color = "var(--green)";
       setTimeout(() => { status.textContent = ""; }, 2500);
     } else {

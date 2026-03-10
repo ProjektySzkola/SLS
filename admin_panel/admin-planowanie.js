@@ -1,18 +1,17 @@
+/* ── normFmt: tablica tournament_format → mapa {disc: fmt} ──────────── */
+function normFmt(raw) {
+  if (!raw) return {};
+  if (Array.isArray(raw)) { const m = {}; raw.forEach(f => { if (f.discipline) m[f.discipline] = f; }); return m; }
+  return raw;
+}
+/* ── normSeed: spłaszcza rekord seeding (join z teams) ───────────────── */
+function normSeed(s) {
+  return { ...s, id: s.team_id ?? s.id, team_name: s.teams?.team_name ?? s.team_name ?? '?', class_name: s.teams?.class_name ?? s.class_name ?? '' };
+}
+
 /* ════════════════════════════════════════════════════════════════════════════
    PLANOWANIE ROZGRYWEK — Calendar + Match Queue
 ════════════════════════════════════════════════════════════════════════════ */
-
-/* ── normFmt: konwertuje tablicę tournament_format → mapę {disc: fmt} ──── */
-function normFmt(raw) {
-  if (!raw) return {};
-  if (Array.isArray(raw)) {
-    const map = {};
-    raw.forEach(f => { if (f.discipline) map[f.discipline] = f; });
-    return map;
-  }
-  return raw; // już mapa
-}
-
 
 /* ── State ─────────────────────────────────────────────────────────────── */
 let plQueue       = [];          // { id, disc, type, team1, team2, label, scheduled: {date,hour,min,court,duration} | null }
@@ -262,12 +261,23 @@ async function openCloseLeagueModal() {
       resultEl.innerHTML = `<span style="color:var(--muted);font-size:.82rem">Przetwarzam…</span>`;
 
       try {
-        const res = await fetch(`${API}/seeding/close-league`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ discipline: disc }),
-        });
-        const data = await res.json();
+        const ligaSeeds = await api(`/seeding/${encodeURIComponent(disc)}/liga`);
+        const standingsData = await api(`/standings-custom/${encodeURIComponent(disc)}`);
+        const fmt = standingsData?.format || {};
+        const groups = fmt.groups_count || 2;
+        const advPerGroup = fmt.advance_per_group || 2;
+        const standingRows = standingsData?.rows || [];
+        const promoted = [];
+        for (let g = 0; g < groups; g++) {
+          const perGroup = fmt.teams_per_group || 4;
+          const groupTeams = (ligaSeeds || []).map(normSeed).filter(s => Math.floor(s.position / perGroup) === g);
+          groupTeams.slice(0, advPerGroup).forEach(s => promoted.push(s));
+        }
+        await supabase.from('seeding').delete().eq('discipline', disc).eq('type', 'puchar');
+        if (promoted.length) {
+          await supabase.from('seeding').insert(promoted.map((s, i) => ({ discipline: disc, type: 'puchar', team_id: s.id, position: i })));
+        }
+        const data = { ok: true, promoted: promoted.length, advance_per_group: advPerGroup, groups };
 
         if (data.ok) {
           resultEl.innerHTML = `<span style="color:var(--success,#22c55e);font-size:.82rem">
@@ -600,7 +610,7 @@ Tej operacji nie można cofnąć.`)) return;
   // Usuń z serwera
   const toDelete = [...plQueue, ...plScheduled].filter(m => m.disc === disc && m.type === type && m.serverId);
   for (const m of toDelete) {
-    try { await fetch(`${API}/matches/${m.serverId}`, { method: "DELETE" }); } catch(e) {}
+    try { await supabase.from('matches').delete().eq('id', m.serverId); } catch(e) {}
   }
 
   // Usuń lokalnie
@@ -682,7 +692,7 @@ function computeLeaguePairs(disc, fmt, seeds) {
   const groups   = fmt.groups_count    || 1;
   const perGroup = fmt.teams_per_group || seeds.length;
   const groupMap = {};
-  seeds.filter(s => s.position >= 0).forEach(t => {
+  seeds.map(normSeed).filter(s => s.position >= 0).forEach(t => {
     const g = Math.floor(t.position / perGroup);
     if (!groupMap[g]) groupMap[g] = [];
     groupMap[g].push(t);
@@ -819,7 +829,7 @@ async function generateLeagueMatches(disc, fmt) {
   const groupLabels = "ABCDEFGH";
 
   const groupMap = {};
-  seeds.filter(s => s.position >= 0).forEach(t => {
+  seeds.map(normSeed).filter(s => s.position >= 0).forEach(t => {
     const gIdx = Math.floor(t.position / perGroup);
     const sIdx = t.position % perGroup;
     if (!groupMap[gIdx]) groupMap[gIdx] = [];
@@ -865,7 +875,7 @@ async function generateLeagueMatches(disc, fmt) {
 /* ── Puchar: pary z pozycji grupowych ───────────────────────────────────── */
 async function generateCupMatches(disc, fmt) {
   const cupSeeds    = await api(`/seeding/${encodeURIComponent(disc)}/puchar`);
-  const directSeeds = cupSeeds?.filter(s => s.position >= 0).sort((a,b) => a.position - b.position);
+  const directSeeds = cupSeeds?.map(normSeed).filter(s => s.position >= 0).sort((a,b) => a.position - b.position);
 
   if (directSeeds?.length >= 2) {
     let added = 0;
@@ -934,7 +944,7 @@ async function generateCupFromLeagueGroups(disc, fmt) {
   }
 
   const groupMap = {};
-  ligaSeeds.filter(s => s.position >= 0).forEach(t => {
+  ligaSeeds.map(normSeed).filter(s => s.position >= 0).forEach(t => {
     const gIdx = Math.floor(t.position / perGroup);
     if (!groupMap[gIdx]) groupMap[gIdx] = [];
     // Użyj miejsca z tabeli wyników; fallback do pozycji rozstawienia
@@ -1473,10 +1483,7 @@ async function savePlModal() {
   // If already saved to DB — PATCH referee/clerk immediately
   if (match.serverId) {
     try {
-      await fetch(`${API}/matches/${match.serverId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      await supabase.from('matches').update({
           referee_id:  refereeId,
           clerk_id:    clerkId,
           match_date:  scheduled?.date   || null,
@@ -1484,8 +1491,7 @@ async function savePlModal() {
           status:      "Planowany",
           court:       court || null,
           duration_min: duration,
-        }),
-      });
+        }).eq('id', match.serverId);
     } catch(e) {
       showPlToast("✗ Błąd zapisu sędziego/protokolanta", true);
     }
@@ -1535,8 +1541,8 @@ async function deletePlMatch() {
   // If saved to server — DELETE from DB
   if (match.serverId) {
     try {
-      const r = await fetch(`${API}/matches/${match.serverId}`, { method: "DELETE" });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const { error: delMErr } = await supabase.from('matches').delete().eq('id', match.serverId);
+      if (delMErr) throw new Error(delMErr.message);
     } catch(e) {
       showPlToast("✗ Błąd usuwania meczu z bazy", true);
       hidePlDeleteConfirm();
@@ -1564,12 +1570,10 @@ async function unschedulePlMatch() {
   // Clear date/time in DB if saved
   if (match.serverId) {
     try {
-      const r = await fetch(`${API}/matches/${match.serverId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ match_date: null, match_time: null, status: "Planowany" }),
-      });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const { error: unschErr } = await supabase.from('matches').update(
+        { match_date: null, match_time: null, status: "Planowany" }
+      ).eq('id', match.serverId);
+      if (unschErr) throw new Error(unschErr.message);
     } catch(e) {
       showPlToast("✗ Błąd cofania przypisania", true);
       return;
@@ -1622,13 +1626,8 @@ async function saveAllToServer() {
       cup_round:   m.cup_round || null,
     };
     try {
-      const r = await fetch(`${API}/matches`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const saved = await r.json();
+      const { data: saved, error: insErr } = await supabase.from('matches').insert(body).select().single();
+      if (insErr) throw new Error(insErr.message);
       m.serverId = saved.id;
       // P4 FIX: zarejestruj w _serverMatchKeys po udanym zapisie
       _serverMatchKeys.add(_matchKey(m.disc, m.type, m.team1.id, m.team2.id));
@@ -1650,12 +1649,8 @@ async function saveAllToServer() {
       duration_min: s?.duration || 60,
     };
     try {
-      const r = await fetch(`${API}/matches/${m.serverId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const { error: updErr } = await supabase.from('matches').update(body).eq('id', m.serverId);
+      if (updErr) throw new Error(updErr.message);
       m._dirty = false;
       ok++;
     } catch(e) {
@@ -1979,21 +1974,16 @@ async function openNextCupRoundModal() {
 
         for (const m of newMatches) {
           try {
-            const r = await fetch(`${API}/matches`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
+            const { data: cupData, error: cupErr } = await supabase.from('matches').insert({
                 discipline:  m.disc,
-                match_type:  "puchar",
+                match_type:  'puchar',
                 cup_round:   m.cup_round,
                 team1_id:    m.team1.id,
                 team2_id:    m.team2.id,
-                status:      "Planowany",
-              }),
-            });
-            if (!r.ok) throw new Error(`HTTP ${r.status}`);
-            const data = await r.json();
-            m.serverId = data.id;
+                status:      'Planowany',
+              }).select().single();
+            if (cupErr) throw new Error(cupErr.message);
+            m.serverId = cupData.id;
             m._new     = false;
             _serverMatchKeys.add(_matchKey(m.disc, m.type, m.team1.id, m.team2.id));
             saved++;

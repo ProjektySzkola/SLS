@@ -75,7 +75,11 @@ const ENDPOINT_MAP = {
   '/people':             () => supabase.from('people').select('*'),
   '/matches':            () => supabase.from('matches_full').select('*'),
   '/tournament-format':  () => supabase.from('tournament_format').select('*'),
-  '/tournament-settings':() => supabase.from('tournament_settings').select('*'),
+  '/tournament-settings':() => supabase.from('tournament_settings').select('*').then(r => {
+    // Zwróć jako obiekt {key: value} dla łatwiejszego użycia
+    if (r.error || !r.data) return r;
+    return { data: Object.fromEntries(r.data.map(row => [row.key, row.value])), error: null };
+  }),
 };
 
 /* ── matchEndpoint ──────────────────────────────────────────────────────── */
@@ -110,6 +114,16 @@ function matchEndpoint(path) {
   if (statusMatch) {
     return () => supabase.from('matches_full').select('*')
                          .eq('status', decodeURIComponent(statusMatch[1]));
+  }
+
+  // /matches?discipline=X&match_type=Y
+  const discTypeMatch = path.match(/^\/matches\?discipline=([^&]+)&match_type=(.+)$/);
+  if (discTypeMatch) {
+    const disc = decodeURIComponent(discTypeMatch[1]);
+    const type = decodeURIComponent(discTypeMatch[2]);
+    return () => supabase.from('matches_full').select('*')
+      .eq('discipline', disc).eq('match_type', type)
+      .order('match_date').order('match_time');
   }
 
   // /matches/:id
@@ -291,16 +305,6 @@ function matchEndpoint(path) {
     const ids = decodeURIComponent(availMatch[1]).split(',').map(Number);
     return () => supabase.from('people_availability').select('*')
       .in('person_id', ids);
-  }
-
-  // /matches?discipline=X&match_type=Y
-  const discTypeMatch = path.match(/^\/matches\?discipline=([^&]+)&match_type=(.+)$/);
-  if (discTypeMatch) {
-    const disc = decodeURIComponent(discTypeMatch[1]);
-    const type = decodeURIComponent(discTypeMatch[2]);
-    return () => supabase.from('matches_full').select('*')
-      .eq('discipline', disc).eq('match_type', type)
-      .order('match_date').order('match_time');
   }
 
   // /seeding/:discipline/liga lub /seeding/:discipline/puchar

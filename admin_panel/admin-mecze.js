@@ -101,8 +101,7 @@ async function loadMecze() {
 
   listEl.innerHTML = `<div class="panel-loading">Ładowanie meczów…</div>`;
 
-  const { data, error: _e0 } = await supabase.from("matches_full").select("*").order("match_date", { ascending: true });
-  if (_e0) console.warn(_e0);
+  const data = await api('/matches');
   if (!data) {
     listEl.innerHTML = `<div class="panel-loading">Błąd ładowania danych.</div>`;
     return;
@@ -280,16 +279,8 @@ async function mzOpenDetail(matchId) {
   $("mz-detail-header").innerHTML = `<div class="panel-loading">Ładowanie…</div>`;
   $("mz-detail-info").innerHTML = "";
 
-  const [matchRes, setsRes, psRes, tsRes] = await Promise.all([
-    supabase.from("matches_full").select("*").eq("id", matchId).single(),
-    supabase.from("match_periods").select("*").eq("match_id", matchId).order("set_number", { ascending: true }),
-    supabase.from("player_stats_full").select("*").eq("match_id", matchId),
-    supabase.from("match_team_stats").select("*").eq("match_id", matchId),
-  ]);
-  const data = matchRes.error ? null : {
-    match: matchRes.data, sets: setsRes.data || [], playerStats: psRes.data || [], teamStats: tsRes.data || []
-  };
-  if (!data || matchRes.error) {
+  const data = await api(`/matches/${matchId}`);
+  if (!data || data.error) {
     $("mz-detail-header").innerHTML = `<div class="mz-empty">Błąd ładowania danych meczu.</div>`;
     return;
   }
@@ -478,8 +469,9 @@ function mzOpenDeleteModal(m) {
     btnConf.textContent = "Usuwanie…";
 
     try {
-      const { error: delErr } = await supabase.from("matches").delete().eq("id", m.id);
+      const { error: delErr } = await supabase.from('matches').delete().eq('id', m.id);
       if (delErr) throw new Error(delErr.message);
+      const res = {};
 
       closeModal();
 
@@ -657,8 +649,8 @@ async function mzRenderBasketballPdf(data) {
   const stage = m.cup_round || (m.match_type === "puchar" ? "Puchar" : "Runda ligowa");
 
   // Fetch logs
-  const { data: logsRaw } = await supabase.from("match_logs").select("*").eq("match_id", m.id).order("id", { ascending: true });
-  const logs = logsRaw || [];
+  const { data: logsData } = await supabase.from('match_logs').select('*').eq('match_id', m.id).order('created_at');
+  const logs = logsData || [];
 
   // ── Shared style palette (identical to volleyball — printer-safe BW) ────────
   const PC  = "-webkit-print-color-adjust:exact;print-color-adjust:exact";
@@ -1107,8 +1099,8 @@ async function mzRenderVolleyballPdf(data) {
   const setsWonT2 = sets.filter(s => s.points_t2 > s.points_t1).length;
 
   // Fetch logs for this match
-  const { data: logsRaw1 } = await supabase.from("match_logs").select("*").eq("match_id", m.id).order("id", { ascending: true });
-  const logs = logsRaw1 || [];
+  const { data: logsData } = await supabase.from('match_logs').select('*').eq('match_id', m.id).order('created_at');
+  const logs = logsData || [];
 
   // ── Style palette — printer-safe pure grayscale ───────────────────────────
   // Rule: ALL text is #000. Backgrounds are LIGHT grays only (#e8–#f4).
@@ -1478,8 +1470,8 @@ async function mzRenderFootballPdf(data) {
   const hasPK = m.shootout_t1 != null && m.shootout_t2 != null;
 
   // Logs - server returns ORDER BY id ASC (oldest first)
-  const { data: logsRaw2 } = await supabase.from("match_logs").select("*").eq("match_id", m.id).order("id", { ascending: true });
-  const logs = logsRaw2 || [];
+  const { data: logsData } = await supabase.from('match_logs').select('*').eq('match_id', m.id).order('created_at');
+  const logs = logsData || [];
 
   // BW print-safe style palette
   const PC  = "-webkit-print-color-adjust:exact;print-color-adjust:exact";
@@ -2136,12 +2128,10 @@ function protToggleAddPlayer(btn, teamId, rosterId, buildCard, onAdded, allPeopl
 
       try {
         const cap = form.querySelector(".pif-captain-db")?.checked;
-        const { data: res, error: pe } = await supabase
-          .from("players")
+        const { data: res, error: plErr1 } = await supabase.from('players')
           .insert({ team_id: teamId, person_id: Number(personId), is_captain: cap ? 1 : 0 })
-          .select("*, people(*)")
-          .single();
-        if (pe) throw new Error(pe.message);
+          .select('*, people(first_name, last_name, class_name)').single();
+        if (plErr1) throw new Error(plErr1.message);
 
         const roster = document.getElementById(rosterId);
         roster?.querySelectorAll(".mz-fill-empty").forEach(el => el.remove());
@@ -2186,19 +2176,15 @@ function protToggleAddPlayer(btn, teamId, rosterId, buildCard, onAdded, allPeopl
       newErrEl.textContent = "";
 
       try {
-        // Utwórz osobę w people, potem gracza
-        const { data: person, error: pe } = await supabase
-          .from("people")
-          .insert({ first_name: first, last_name: last, class_name: cls || null, role: "Zawodnik" })
-          .select()
-          .single();
-        if (pe) throw new Error(pe.message);
-        const { data: res, error: plE } = await supabase
-          .from("players")
-          .insert({ team_id: teamId, person_id: person.id, is_captain: cap ? 1 : 0 })
-          .select("*, people(*)")
-          .single();
-        if (plE) throw new Error(plE.message);
+        const { data: newPerson, error: peErr } = await supabase.from('people')
+          .insert({ first_name: first, last_name: last, class_name: cls || null, role: 'Zawodnik' })
+          .select().single();
+        if (peErr) throw new Error(peErr.message);
+        const { data: res, error: plErr2 } = await supabase.from('players')
+          .insert({ team_id: teamId, person_id: newPerson.id, is_captain: cap ? 1 : 0 })
+          .select('*, people(first_name, last_name, class_name)').single();
+        if (plErr2) throw new Error(plErr2.message);
+        res.first_name = newPerson.first_name; res.last_name = newPerson.last_name; res.class_name = newPerson.class_name;
 
         const roster = document.getElementById(rosterId);
         roster?.querySelectorAll(".mz-fill-empty").forEach(el => el.remove());
@@ -2286,12 +2272,10 @@ function protToggleAddReferee(btn) {
     errEl.textContent = "";
 
     try {
-      const { data: res, error: pe } = await supabase
-        .from("people")
+      const { data: res, error: pplErr } = await supabase.from('people')
         .insert({ first_name: first, last_name: last, role })
-        .select()
-        .single();
-      if (pe) throw new Error(pe.message);
+        .select().single();
+      if (pplErr) throw new Error(pplErr.message);
 
       mzToast(`✅ Dodano: ${last} ${first} (${role}) — odśwież protokół aby wybrać`, "ok");
 
@@ -2756,10 +2740,10 @@ async function mzSaveFootballForm(data, body, m) {
     to_t1: 0, to_t2: 0,
   }));
 
-  // 1. Periods — delete + insert
-  await supabase.from("match_periods").delete().eq("match_id", m.id);
+  await supabase.from('match_periods').delete().eq('match_id', m.id);
   if (sets.length) {
-    await supabase.from("match_periods").insert(sets.map(s => ({ ...s, match_id: m.id })));
+    const periodRows = sets.map((s, i) => ({ ...s, match_id: m.id, set_number: s.set_number ?? i+1 }));
+    await supabase.from('match_periods').insert(periodRows);
   }
 
   // 2. Final scores
@@ -2821,8 +2805,8 @@ async function mzSaveFootballForm(data, body, m) {
 
   // 5. PK kicks also written to Match_Logs so section 7 shows them
   if (hasPK && (ext.pk_t1.length || ext.pk_t2.length)) {
-    const { data: existingLogsRaw } = await supabase.from("match_logs").select("*").eq("match_id", m.id).order("id");
-    const existingLogs = existingLogsRaw || [];
+    const { data: existingLogsData } = await supabase.from('match_logs').select('*').eq('match_id', m.id).order('created_at');
+    const existingLogs = existingLogsData || [];
     const nonPkLogs = existingLogs
       .filter(l => (l.action_type || "").toLowerCase() !== "penalty")
       .map(l => ({ type: l.action_type, description: l.description, time: l.log_time }));
@@ -2839,17 +2823,15 @@ async function mzSaveFootballForm(data, body, m) {
       });
     }
     if (pkLogs.length) {
-      const allLogs = [...nonPkLogs, ...pkLogs];
-      await supabase.from("match_logs").delete().eq("match_id", m.id);
-      await supabase.from("match_logs").insert(allLogs.map(l => ({
-        match_id: m.id, action_type: l.type, description: l.description, log_time: l.time ?? null,
-      })));
+      await supabase.from('match_logs').delete().eq('match_id', m.id);
+      const allLogs = [...nonPkLogs, ...pkLogs].map(l => ({ ...l, match_id: m.id }));
+      if (allLogs.length) await supabase.from('match_logs').insert(allLogs);
     }
   }
 
-  // 6. Update match — football stores notes in referee_notes (JSON {notes_text, __fb})
+  // 6. Patch match — football stores notes in referee_notes (JSON {notes_text, __fb})
   const matchTime = $("fb-start-time")?.value ? `${$("fb-start-time").value}:00` : m.match_time;
-  await supabase.from("matches").update({
+  await supabase.from('matches').update({
     score_t1:      scoreData[m.team1_id] ?? 0,
     score_t2:      scoreData[m.team2_id] ?? 0,
     shootout_t1:   hasPK ? pk_t1 : null,
@@ -2857,33 +2839,33 @@ async function mzSaveFootballForm(data, body, m) {
     referee_notes: serialized,
     referee_id:    Number($("fb-referee2")?.value) || null,
     clerk_id:      Number($("fb-clerk1")?.value)   || null,
-    location:      $("fb-location")?.value || m.location     || "",
+    location:      $("fb-location")?.value || m.location || "",
     match_time:    matchTime,
     match_date:    $("fb-date")?.value || m.match_date,
     status:        $("fb-status-quick")?.value || "Rozegrany",
-  }).eq("id", m.id);
+  }).eq('id', m.id);
 
   // 7. Player stats
   for (const row of body.querySelectorAll(".fb-player-row")) {
     const playerId = Number(row.dataset.playerId);
     const getV     = n => row.querySelector(`[name="${n}"]`)?.value;
-    await supabase.from("match_player_stats").upsert({
+    await supabase.from('match_player_stats').upsert({
       match_id: m.id, player_id: playerId,
       total_points_in_match: Number(getV("total_points_in_match") || 0),
       yellow_cards:          Number(getV("yellow_cards") || 0),
       red_card:              Number(getV("red_card") || 0),
       personal_fouls: 0, technical_fouls: 0,
-    }, { onConflict: "match_id,player_id" });
+    }, { onConflict: 'match_id,player_id' });
   }
 
   // 8. Team stats (total subs = sum across periods)
   for (const side of ["t1", "t2"]) {
     const teamId    = side === "t1" ? m.team1_id : m.team2_id;
     const totalSubs = sets.reduce((acc, s) => acc + (s[`subs_${side}`] || 0), 0);
-    await supabase.from("match_team_stats").upsert({
+    await supabase.from('match_team_stats').upsert({
       match_id: m.id, team_id: teamId,
       timeouts_taken: 0, substitutions_used: totalSubs, team_fouls_count: 0,
-    }, { onConflict: "match_id,team_id" });
+    }, { onConflict: 'match_id,team_id' });
   }
 }
 
@@ -2894,18 +2876,15 @@ async function mzRenderFillForm(data) {
   const body = $("mz-fill-body");
   body.innerHTML = `<div class="panel-loading">Ładowanie składów…</div>`;
 
-  const [sq1Res, sq2Res, psRes2, ts1Res, ts2Res, peopleRes] = await Promise.all([
-    supabase.from("players").select("*, people(*)").eq("team_id", m.team1_id),
-    supabase.from("players").select("*, people(*)").eq("team_id", m.team2_id),
-    supabase.from("match_player_stats").select("*").eq("match_id", m.id),
-    supabase.from("match_team_stats").select("*").eq("match_id", m.id).eq("team_id", m.team1_id).maybeSingle(),
-    supabase.from("match_team_stats").select("*").eq("match_id", m.id).eq("team_id", m.team2_id).maybeSingle(),
-    supabase.from("people").select("*").order("last_name"),
+  const [squad1, squad2, existingStats, t1StatsArr, t2StatsArr, allPeople] = await Promise.all([
+    api(`/teams/${m.team1_id}/players`),
+    api(`/teams/${m.team2_id}/players`),
+    supabase.from('match_player_stats').select('*').eq('match_id', m.id).then(r => r.data || []),
+    supabase.from('match_team_stats').select('*').eq('match_id', m.id).eq('team_id', m.team1_id).then(r => r.data?.[0] || {}),
+    supabase.from('match_team_stats').select('*').eq('match_id', m.id).eq('team_id', m.team2_id).then(r => r.data?.[0] || {}),
+    api('/people'),
   ]);
-  const [squad1, squad2, existingStats, t1Stats, t2Stats, allPeople] = [
-    sq1Res.data || [], sq2Res.data || [], psRes2.data || [],
-    ts1Res.data || {}, ts2Res.data || {}, peopleRes.data || [],
-  ];
+  const t1Stats = t1StatsArr, t2Stats = t2StatsArr;
 
   const statsMap = {};
   (existingStats || []).forEach(s => { statsMap[s.player_id] = s; });
@@ -3389,7 +3368,7 @@ async function mzSaveFillForm(data) {
     } else {
       // ── Generic save ──────────────────────────────────────
       const noteText = $("mz-fill-note-text")?.value || "";
-      await supabase.from("matches").update({ referee_notes: noteText }).eq("id", m.id);
+      await supabase.from('matches').update({ referee_notes: noteText }).eq('id', m.id);
 
       const scoreInputs = body.querySelectorAll("input[name=score]");
       const scoreData = {};
@@ -3406,31 +3385,31 @@ async function mzSaveFillForm(data) {
         && shootoutData[m.team1_id] != null
         && shootoutData[m.team2_id] != null;
 
-      await supabase.from("matches").update({
+      await supabase.from('matches').update({
         score_t1: scoreData[m.team1_id] ?? 0,
         score_t2: scoreData[m.team2_id] ?? 0,
         shootout_t1: shootoutValid ? shootoutData[m.team1_id] : null,
         shootout_t2: shootoutValid ? shootoutData[m.team2_id] : null,
         status: "Rozegrany",
-      }).eq("id", m.id);
+      }).eq('id', m.id);
 
       for (const teamId of [m.team1_id, m.team2_id]) {
         const section = body.querySelector(`.mz-fill-team-stats[data-team-id="${teamId}"]`);
         if (!section) continue;
         const getVal = name => Number(section.querySelector(`[name="${name}"][data-team="${teamId}"]`)?.value || 0);
-        await supabase.from("match_team_stats").upsert({
+        await supabase.from('match_team_stats').upsert({
           match_id: m.id, team_id: teamId,
           timeouts_taken: getVal("timeouts_taken"),
           substitutions_used: getVal("substitutions_used"),
           team_fouls_count: getVal("team_fouls_count"),
-        }, { onConflict: "match_id,team_id" });
+        }, { onConflict: 'match_id,team_id' });
       }
 
       const playerRows = body.querySelectorAll(".mz-fill-player-row");
       for (const row of playerRows) {
         const playerId = Number(row.dataset.playerId);
         const getV = name => row.querySelector(`[name="${name}"]`)?.value;
-        await supabase.from("match_player_stats").upsert({
+        await supabase.from('match_player_stats').upsert({
           match_id: m.id,
           player_id: playerId,
           total_points_in_match: Number(getV("total_points_in_match") || 0),
@@ -3438,19 +3417,13 @@ async function mzSaveFillForm(data) {
           red_card: Number(getV("red_card") || 0),
           personal_fouls: Number(getV("personal_fouls") || 0),
           technical_fouls: Number(getV("technical_fouls") || 0),
-        }, { onConflict: "match_id,player_id" });
+        }, { onConflict: 'match_id,player_id' });
       }
     }
 
     mzToast("✅ Protokół zapisany pomyślnie!", "ok");
 
-    const [fmRes, fsRes, fpRes, ftRes] = await Promise.all([
-      supabase.from("matches_full").select("*").eq("id", m.id).single(),
-      supabase.from("match_periods").select("*").eq("match_id", m.id).order("set_number"),
-      supabase.from("player_stats_full").select("*").eq("match_id", m.id),
-      supabase.from("match_team_stats").select("*").eq("match_id", m.id),
-    ]);
-    const freshData = { match: fmRes.data, sets: fsRes.data || [], playerStats: fpRes.data || [], teamStats: ftRes.data || [] };
+    const freshData = await api(`/matches/${m.id}`);
     MZ.currentMatch = freshData.match;
     MZ.currentMatchData = freshData;
     mzRenderDetailHeader(freshData);
@@ -3480,9 +3453,10 @@ async function mzSaveVolleyballForm(data, body, m) {
   }));
 
   // 2. Save sets to DB
-  await supabase.from("match_periods").delete().eq("match_id", m.id);
+  await supabase.from('match_periods').delete().eq('match_id', m.id);
   if (sets.length) {
-    await supabase.from("match_periods").insert(sets.map(s => ({ ...s, match_id: m.id })));
+    const vbPeriodRows = sets.map((s, i) => ({ ...s, match_id: m.id, set_number: s.set_number ?? i+1 }));
+    await supabase.from('match_periods').insert(vbPeriodRows);
   }
 
   // 3. Calculate sets won (score)
@@ -3551,7 +3525,7 @@ async function mzSaveVolleyballForm(data, body, m) {
   const matchTime  = $("vb-start-time")?.value ? `${$("vb-start-time").value}:00` : m.match_time;
   const matchDate  = $("vb-date")?.value || m.match_date;
 
-  await supabase.from("matches").update({
+  await supabase.from('matches').update({
     score_t1,
     score_t2,
     referee_id,
@@ -3561,19 +3535,22 @@ async function mzSaveVolleyballForm(data, body, m) {
     match_date:    matchDate,
     referee_notes: serialized,
     status: $("vb-status-quick")?.value || "Rozegrany",
-  }).eq("id", m.id);
+  }).eq('id', m.id);
 
   // 6. Save player points
   const playerRows = body.querySelectorAll(".vb-player-row");
   for (const row of playerRows) {
     const playerId = Number(row.dataset.playerId);
     const pts = Number(row.querySelector("[name=total_points_in_match]")?.value || 0);
-    await supabase.from("match_player_stats").upsert({
+    await supabase.from('match_player_stats').upsert({
       match_id: m.id,
       player_id: playerId,
       total_points_in_match: pts,
-      yellow_cards: 0, red_card: 0, personal_fouls: 0, technical_fouls: 0,
-    }, { onConflict: "match_id,player_id" });
+      yellow_cards: 0,
+      red_card: 0,
+      personal_fouls: 0,
+      technical_fouls: 0,
+    }, { onConflict: 'match_id,player_id' });
   }
 
   // 7. Save team stats (totals across all sets)
@@ -3581,13 +3558,13 @@ async function mzSaveVolleyballForm(data, body, m) {
     const teamId = teamKey === "t1" ? m.team1_id : m.team2_id;
     const totalTO   = ext.set_data.reduce((acc, s) => acc + (s[`to_${teamKey}`]   || 0), 0);
     const totalSubs = ext.set_data.reduce((acc, s) => acc + (s[`subs_${teamKey}`] || 0), 0);
-    await supabase.from("match_team_stats").upsert({
+    await supabase.from('match_team_stats').upsert({
       match_id: m.id,
       team_id: teamId,
       timeouts_taken:     totalTO,
       substitutions_used: totalSubs,
       team_fouls_count:   0,
-    }, { onConflict: "match_id,team_id" });
+    }, { onConflict: 'match_id,team_id' });
   }
 }
 
@@ -4018,8 +3995,9 @@ async function mzSaveBasketballForm(data, body, m) {
 
   // 2. Save quarters to DB
   if (quarters.length) {
-    await supabase.from("match_periods").delete().eq("match_id", m.id);
-    await supabase.from("match_periods").insert(quarters.map(q => ({ ...q, match_id: m.id })));
+    await supabase.from('match_periods').delete().eq('match_id', m.id);
+    const bkPeriodRows = quarters.map((q, i) => ({ ...q, match_id: m.id, set_number: q.set_number ?? i+1 }));
+    await supabase.from('match_periods').insert(bkPeriodRows);
   }
 
   // 3. Collect match scores — prefer the big score inputs at top of form
@@ -4083,7 +4061,7 @@ async function mzSaveBasketballForm(data, body, m) {
   const matchTime  = $("bk-start-time")?.value ? `${$("bk-start-time").value}:00` : m.match_time;
   const matchDate  = $("bk-date")?.value || m.match_date;
 
-  await supabase.from("matches").update({
+  await supabase.from('matches').update({
     score_t1,
     score_t2,
     referee_id,
@@ -4093,23 +4071,24 @@ async function mzSaveBasketballForm(data, body, m) {
     match_date:    matchDate,
     referee_notes: serialized,
     status: $("bk-status")?.value || "Rozegrany",
-  }).eq("id", m.id);
+  }).eq('id', m.id);
 
   // 6. Save player stats
   const playerRows = body.querySelectorAll(".bk-player-row");
   for (const row of playerRows) {
     const playerId = Number(row.dataset.playerId);
-    await supabase.from("match_player_stats").upsert({
+    await supabase.from('match_player_stats').upsert({
       match_id: m.id,
       player_id: playerId,
       total_points_in_match: Number(row.querySelector("[name=total_points_in_match]")?.value || 0),
       points_1pt:      Number(row.querySelector("[name=points_1pt]")?.value      || 0),
       points_2pt:      Number(row.querySelector("[name=points_2pt]")?.value      || 0),
       points_3pt:      Number(row.querySelector("[name=points_3pt]")?.value      || 0),
-      yellow_cards: 0, red_card: 0,
+      yellow_cards:    0,
+      red_card:        0,
       personal_fouls:  Number(row.querySelector("[name=personal_fouls]")?.value  || 0),
       technical_fouls: Number(row.querySelector("[name=technical_fouls]")?.value || 0),
-    }, { onConflict: "match_id,player_id" });
+    }, { onConflict: 'match_id,player_id' });
   }
 
   // 7. Save team stats (sum across quarters)
@@ -4118,13 +4097,13 @@ async function mzSaveBasketballForm(data, body, m) {
     const totalTO   = qdVals.reduce((s, q) => s + (q[`to_${key}`]   || 0), 0);
     const totalSubs = qdVals.reduce((s, q) => s + (q[`subs_${key}`] || 0), 0);
     const foulsEl   = body.querySelector(`[name=team_fouls_count][data-team="${teamId}"]`);
-    await supabase.from("match_team_stats").upsert({
+    await supabase.from('match_team_stats').upsert({
       match_id: m.id,
       team_id: teamId,
       timeouts_taken:     totalTO,
       substitutions_used: totalSubs,
       team_fouls_count:   Number(foulsEl?.value || 0),
-    }, { onConflict: "match_id,team_id" });
+    }, { onConflict: 'match_id,team_id' });
   }
 }
 checkStatus();

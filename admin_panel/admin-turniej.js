@@ -25,10 +25,7 @@ async function loadTurniej() {
     api("/tournament-format"),
     api("/tournament-settings"),
   ]);
-  const fmtArray = fmt || [];
-  adminFmtCache = Object.fromEntries(
-    fmtArray.map(row => [row.discipline, row])
-  );
+  adminFmtCache = fmt || {};
 
   buildDiscCards(adminFmtCache);
   buildRulesTab(settings || {});
@@ -297,12 +294,11 @@ async function saveDiscCard(discipline, sid, card, hasDraw) {
   };
 
   try {
-    const { data: updated, error } = await supabase
-      .from("tournament_format")
-      .upsert({ discipline, ...payload }, { onConflict: "discipline" })
-      .select()
-      .single();
-    if (error) throw new Error(error.message);
+    const { data: updated, error: fmtErr } = await supabase
+      .from('tournament_format')
+      .upsert({ ...payload, discipline }, { onConflict: 'discipline' })
+      .select().single();
+    if (fmtErr) throw new Error(fmtErr.message);
     adminFmtCache[discipline] = updated;
 
     btn.textContent = "✓ Zapisano";
@@ -543,10 +539,10 @@ async function saveRules(discipline, sid, card, sections) {
 
   try {
     const rows = Object.entries(body).map(([key, value]) => ({ key, value: String(value) }));
-    const { error } = await supabase
-      .from("tournament_settings")
-      .upsert(rows, { onConflict: "key" });
-    if (error) throw new Error(error.message);
+    const { error: setErr } = await supabase
+      .from('tournament_settings')
+      .upsert(rows, { onConflict: 'key' });
+    if (setErr) throw new Error(setErr.message);
     showToast(`✓ ${discipline} — przepisy zapisane`);
     btn.textContent = "✓ Zapisano"; btn.classList.add("dc-save-btn--ok");
     setTimeout(() => { btn.textContent = "Zapisz przepisy"; btn.classList.remove("dc-save-btn--ok"); btn.disabled = false; }, 2400);
@@ -613,11 +609,11 @@ async function saveInfo() {
     description: $("si-description").value.trim(),
   };
   try {
-    const rows = Object.entries(body).map(([key, value]) => ({ key, value: String(value ?? "") }));
-    const { error } = await supabase
-      .from("tournament_settings")
-      .upsert(rows, { onConflict: "key" });
-    if (error) throw new Error(error.message);
+    const rows = Object.entries(body).map(([key, value]) => ({ key, value: String(value ?? '') }));
+    const { error: infoErr } = await supabase
+      .from('tournament_settings')
+      .upsert(rows, { onConflict: 'key' });
+    if (infoErr) throw new Error(infoErr.message);
     showToast("✓ Informacje zapisane");
     btn.textContent = "✓ Zapisano"; btn.classList.add("saved");
     setTimeout(() => { btn.textContent = "Zapisz informacje"; btn.classList.remove("saved"); btn.disabled = false; }, 2200);

@@ -71,23 +71,20 @@ function showAddPlayerModal(teamId) {
     btn.disabled = true; btn.textContent = "…";
 
     try {
-      // Utwórz osobę, potem gracza
       const { data: person, error: pe } = await supabase
         .from("people")
         .insert({ first_name: first, last_name: last, class_name: cls || null, role: "Zawodnik" })
-        .select()
-        .single();
+        .select().single();
       if (pe) throw new Error(pe.message);
-      const { error: plE } = await supabase
-        .from("players")
-        .insert({
-          team_id: teamId, person_id: person.id,
-          is_captain: cap ? 1 : 0, rodo_consent: rodo ? 1 : 0,
-          participation_consent: parent ? 1 : 0, entry_fee_paid: fee,
-        });
+      const { error: plE } = await supabase.from("players").insert({
+        team_id: teamId, person_id: person.id,
+        is_captain: cap ? 1 : 0, rodo_consent: rodo ? 1 : 0,
+        participation_consent: parent ? 1 : 0, entry_fee_paid: fee,
+      });
       if (plE) throw new Error(plE.message);
       overlay.remove();
       showToast("✓ Zawodnik dodany");
+      // odśwież skład drużyny
       selectTeam(teamId, $("team-players-header").querySelector("h2").textContent);
     } catch(e) {
       errEl.textContent = "Błąd: " + e.message;
@@ -216,7 +213,7 @@ async function srInitWorkspace() {
   // wgraj zapisane rozstawienie (position = indeks slotu, -1 = pula)
   if (seedRaw?.length) {
     seedRaw.filter(t => t.position >= 0 && t.position < srSlots.length).forEach(t => {
-      srSlots[t.position].team = { id: t.id, team_name: t.team_name, class_name: t.class_name };
+      srSlots[t.position].team = { id: t.team_id ?? t.id, team_name: t.teams?.team_name ?? t.team_name, class_name: t.teams?.class_name ?? t.class_name };
     });
   }
 
@@ -323,7 +320,7 @@ function srMakeChip(team, source, idxOrKey) {
   chip.innerHTML = `
     <span class="sr-chip-avatar">${initials}</span>
     <span class="sr-chip-name">${team.team_name}</span>
-    <span class="sr-chip-class">${team.class_name ?? ''}</span>
+    <span class="sr-chip-class">${team.class_name}</span>
   `;
 
   chip.addEventListener("dragstart", e => {
@@ -622,7 +619,7 @@ function srMakeSlot(slot, posLabel, compact = false) {
       <span class="sr-slot-avatar">${initials}</span>
       <div class="sr-slot-info">
         <span class="sr-slot-name">${t.team_name}</span>
-        <span class="sr-slot-class">${t.class_name ?? ''}</span>
+        <span class="sr-slot-class">${t.class_name}</span>
       </div>
       ${srLocked ? "" : '<button class="sr-slot-remove" title="Usuń">✕</button>'}
     `;
@@ -746,7 +743,6 @@ async function srSave() {
     .filter(Boolean);
 
   try {
-    // Usuń stare rozstawienie dla tej dyscypliny i typu
     const { error: delErr } = await supabase
       .from("seeding")
       .delete()

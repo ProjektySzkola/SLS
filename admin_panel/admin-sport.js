@@ -1,3 +1,14 @@
+/* ── normFmt: konwertuje tablicę tournament_format → mapę {disc: fmt} ──── */
+function normFmt(raw) {
+  if (!raw) return {};
+  if (Array.isArray(raw)) {
+    const map = {};
+    raw.forEach(f => { if (f.discipline) map[f.discipline] = f; });
+    return map;
+  }
+  return raw;
+}
+
 /* ════════════════════════════════════════════════════════════════════════════
    WIDOKI SPORTOWE — tabele ligowe + drabinka pucharowa
    Używa punktacji z Tournament_Format (pts_win / pts_draw / pts_loss)
@@ -31,10 +42,10 @@ async function loadSportView(discipline) {
 
   // Pobierz format, tabelę i bracket równolegle
   const [fmtAll, standingsData, bracketData, matchesData] = await Promise.all([
-    api('/tournament-format').catch(() => ({})),
-    api(`/standings-custom/${encodeURIComponent(discipline)}`).catch(() => null),
-    api(`/bracket/${encodeURIComponent(discipline)}`).catch(() => []),
-    api(`/matches?discipline=${encodeURIComponent(discipline)}`).catch(() => []),
+    api('/tournament-format'),
+    api(`/standings-custom/${encodeURIComponent(discipline)}`),
+    api(`/bracket/${encodeURIComponent(discipline)}`),
+    api(`/matches?discipline=${encodeURIComponent(discipline)}`),
   ]);
 
   const fmt = fmtAll[discipline] || {};
@@ -396,7 +407,7 @@ async function svEndLeague(discipline, fmt, standingsData) {
   }
 
   // ── Sprawdź czy mecze w 1. rundzie już istnieją ───────────────────────────
-  const existingBracket = await api(`/bracket/${encodeURIComponent(discipline)}`).catch(() => []) || [];
+  const existingBracket = await api(`/bracket/${encodeURIComponent(discipline)}`) || [];
   const firstRoundData  = (existingBracket.find(r => r.round === firstRound)?.matches) || [];
   if (firstRoundData.length > 0) {
     return { ok: false, msg: `Mecze w rundzie „${firstRound}" już istnieją. Usuń je najpierw.` };
@@ -405,15 +416,15 @@ async function svEndLeague(discipline, fmt, standingsData) {
   // ── Utwórz mecze ─────────────────────────────────────────────────────────
   let created = 0;
   for (const pair of pairs) {
-    const { error } = await supabase.from('matches').insert({
-      discipline,
-      match_type: 'puchar',
-      cup_round:  firstRound,
-      team1_id:   pair.t1.id,
-      team2_id:   pair.t2.id,
-      status:     'Planowany',
-    });
-    if (!error) created++;
+    const { error: sportMatchErr } = await supabase.from('matches').insert({
+        discipline,
+        match_type: 'puchar',
+        cup_round:  firstRound,
+        team1_id:   pair.t1.id,
+        team2_id:   pair.t2.id,
+        status:     'Planowany',
+      });
+    if (!sportMatchErr) created++;
   }
 
   return { ok: true, created, pairs, firstRound };
@@ -736,7 +747,7 @@ function svBuildBracket({ bracketData, fmt }, containerEl) {
 // ── KLASYFIKACJA STRZELCÓW / RZUCAJĄCYCH ─────────────────────────────────────
 
 async function svLoadAndRenderScorers(containerEl, discipline) {
-  const data = await api(`/top-scorers-detail/${encodeURIComponent(discipline)}`).catch(() => null);
+  const data = await api(`/top-scorers-detail/${encodeURIComponent(discipline)}`);
 
   if (!data || data.error) {
     containerEl.innerHTML = `<div class="sv-empty">Brak danych statystycznych.<br>Uzupełnij protokoły meczów aby zobaczyć klasyfikację.</div>`;

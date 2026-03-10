@@ -226,24 +226,19 @@ async function saveSpModal() {
   btn.disabled = true; btn.textContent = "Zapisywanie…";
 
   try {
-    let data;
+    let personId;
     if (spEditId) {
-      const { data: upd, error } = await supabase
-        .from("people")
+      const { error } = await supabase.from('people')
         .update({ first_name, last_name, class_name: class_name||null, role })
-        .eq("id", spEditId)
-        .select()
-        .single();
+        .eq('id', spEditId);
       if (error) throw new Error(error.message);
-      data = upd;
+      personId = spEditId;
     } else {
-      const { data: ins, error } = await supabase
-        .from("people")
+      const { data: ins, error } = await supabase.from('people')
         .insert({ first_name, last_name, class_name: class_name||null, role })
-        .select()
-        .single();
+        .select().single();
       if (error) throw new Error(error.message);
-      data = ins;
+      personId = ins.id;
     }
 
     // Invalidate people cache used by planning view
@@ -252,8 +247,8 @@ async function saveSpModal() {
     closeSpModal();
     await refreshSpPeople();
     showSpToast(spEditId ? "✓ Zaktualizowano" : "✓ Dodano osobę");
-    spSelectedId = data.id;
-    loadSpDetail(data.id);
+    spSelectedId = personId;
+    loadSpDetail(personId);
   } catch(e) {
     showSpToast(`✗ ${e.message}`, true);
   } finally {
@@ -265,8 +260,8 @@ async function deleteSpPerson(personId, name) {
   if (!confirm(`Usunąć osobę "${name}" z systemu?\nMecze przypisane do tej osoby stracą sędziego/protokolanta.`)) return;
 
   try {
-    const { error } = await supabase.from("people").delete().eq("id", personId);
-    if (error) throw new Error(error.message);
+    const { error: delErr } = await supabase.from('people').delete().eq('id', personId);
+    if (delErr) throw new Error(delErr.message);
 
     plPeopleCache = null;
     spSelectedId = null;
@@ -369,17 +364,15 @@ function renderAvailSection(personId, slots) {
     try {
       const slots = [];
       DOW_ORDER.forEach(dow => (byDay[dow] || []).forEach(r =>
-        slots.push({ person_id: personId, day_of_week: dow, hour_start: r.hs, hour_end: r.he })
+        slots.push({ day_of_week: dow, hour_start: r.hs, hour_end: r.he })
       ));
-      // Usuń stare, wstaw nowe
-      const { error: delErr } = await supabase
-        .from("people_availability")
-        .delete()
-        .eq("person_id", personId);
-      if (delErr) throw new Error(delErr.message);
+      const { error: avDel } = await supabase.from('people_availability')
+        .delete().eq('person_id', personId);
+      if (avDel) throw new Error(avDel.message);
       if (slots.length) {
-        const { error: insErr } = await supabase.from("people_availability").insert(slots);
-        if (insErr) throw new Error(insErr.message);
+        const rows = slots.map(s => ({ person_id: personId, day_of_week: s.day_of_week, hour_start: s.hour_start, hour_end: s.hour_end }));
+        const { error: avIns } = await supabase.from('people_availability').insert(rows);
+        if (avIns) throw new Error(avIns.message);
       }
       plAvailCache[personId] = slots;
       if (plAvailHighlight.includes(personId)) renderCalendar();

@@ -1,3 +1,9 @@
+/* ── flatSettings: [{key,value}] → {key: value} ──────────────────────── */
+function flatSettings(arr) {
+  if (!arr || !Array.isArray(arr)) return arr || {};
+  return Object.fromEntries(arr.map(r => [r.key, r.value]));
+}
+
 /* ════════════════════════════════════════════════════════════════════════════
    PROTOKOŁY DO DRUKU — podgląd w panelu inline (jak w sekcji Meczów)
    Przycisk Drukuj/PDF otwiera nowe okno z @page A4 landscape i wywołuje print()
@@ -70,7 +76,7 @@ function showPrintPanel(titleLabel, htmlContent) {
    KOSZYKÓWKA — protokół A4 poziomo, BW
 ════════════════════════════════════════════════════════════════════════════ */
 async function generateBasketballPrintProtocol() {
-  const raw = await api('/tournament-settings') ?? {}
+  const raw = flatSettings(await api('/tournament-settings')) ?? {};
   const s = raw || {};
 
   /* ── ustawienia ─────────────────────────────────────────────────────────── */
@@ -398,7 +404,7 @@ async function generateBasketballPrintProtocol() {
    PIŁKA NOŻNA — protokół A4 poziomo, BW
 ════════════════════════════════════════════════════════════════════════════ */
 async function generateFootballPrintProtocol() {
-  const raw = await api('/tournament-settings') ?? {}
+  const raw = flatSettings(await api('/tournament-settings')) ?? {};
   const s = raw || {};
 
   /* ── ustawienia ─────────────────────────────────────────────────────────── */
@@ -740,7 +746,7 @@ async function generateFootballPrintProtocol() {
      6. Dane meczu (50%) | Sędziowie (50%)
 ════════════════════════════════════════════════════════════════════════════ */
 async function generateVolleyballPrintProtocol() {
-  const raw = await api('/tournament-settings') ?? {}
+  const raw = flatSettings(await api('/tournament-settings')) ?? {};
   const s = raw || {};
 
   /* ── ustawienia ─────────────────────────────────────────────────────────── */
@@ -1098,7 +1104,7 @@ async function generateVolleyballPrintProtocol() {
      └─────────────────────────────────────────────────────────────────────┘
 ════════════════════════════════════════════════════════════════════════════ */
 async function generatePenaltyShootoutProtocol() {
-  const raw = await api('/tournament-settings') ?? {}
+  const raw = flatSettings(await api('/tournament-settings')) ?? {};
   const s = raw || {};
 
   /* ── ustawienia ─────────────────────────────────────────────────────── */

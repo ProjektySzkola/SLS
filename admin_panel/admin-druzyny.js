@@ -128,13 +128,10 @@ async function saveTeam(teamId) {
   status.textContent = "";
 
   try {
-    const { data: updated, error } = await supabase
-      .from("teams")
+    const { data: updated, error: teamUpdErr } = await supabase.from('teams')
       .update({ team_name: newName, class_name: newClass })
-      .eq("id", teamId)
-      .select()
-      .single();
-    if (error) throw new Error(error.message);
+      .eq('id', teamId).select().single();
+    if (teamUpdErr) throw new Error(teamUpdErr.message);
 
     // aktualizuj sidebar
     const row = document.querySelector(`.team-row[data-id="${teamId}"]`);
@@ -242,11 +239,8 @@ async function savePlayer(tr, playerId) {
   };
 
   try {
-    const { error } = await supabase
-      .from("players")
-      .update(payload)
-      .eq("id", playerId);
-    if (error) throw new Error(error.message);
+    const { error: plUpdErr } = await supabase.from('players').update(payload).eq('id', playerId);
+    if (plUpdErr) throw new Error(plUpdErr.message);
     showToast("✓ Zapisano zmiany");
     btn.textContent = "✓ Zapisano";
     btn.classList.add("saved");
@@ -321,8 +315,8 @@ function confirmDeletePlayer(playerId, playerName, trEl) {
 
 async function deletePlayer(playerId, trEl) {
   try {
-    const { error } = await supabase.from("players").delete().eq("id", playerId);
-    if (error) throw new Error(error.message);
+    const { error: plDelErr } = await supabase.from('players').delete().eq('id', playerId);
+    if (plDelErr) throw new Error(plDelErr.message);
     // animowane usunięcie wiersza
     trEl.classList.add("row-deleting");
     setTimeout(() => trEl.remove(), 350);
@@ -348,8 +342,8 @@ function confirmDeleteTeam(teamId, teamName) {
 
 async function deleteTeam(teamId) {
   try {
-    const { error } = await supabase.from("teams").delete().eq("id", teamId);
-    if (error) throw new Error(error.message);
+    const { error: teamDelErr } = await supabase.from('teams').delete().eq('id', teamId);
+    if (teamDelErr) throw new Error(teamDelErr.message);
     showToast("✓ Drużyna usunięta");
     // wyczyść panel
     $("team-players-header").innerHTML = `<h2>Wybierz drużynę</h2>`;
@@ -410,12 +404,10 @@ function showAddTeamModal() {
     btn.disabled = true; btn.textContent = "…";
 
     try {
-      const { data: team, error } = await supabase
-        .from("teams")
-        .insert({ team_name: name, class_name: cls || null })
-        .select()
-        .single();
-      if (error) throw new Error(error.message);
+      const { data: team, error: teamInsErr } = await supabase.from('teams')
+        .insert({ team_name: name, class_name: cls })
+        .select().single();
+      if (teamInsErr) throw new Error(teamInsErr.message);
       overlay.remove();
       showToast("✓ Drużyna utworzona");
       // dołącz do listy i zaznacz
@@ -829,17 +821,13 @@ function showBulkImportModal(teamId, teamName) {
         text.textContent  = `Zapisywanie ${i + 1} / ${parsedPlayers.length} — ${p.first_name} ${p.last_name}`;
 
         try {
-          // Utwórz osobę, potem gracza
-          const { data: person, error: pe } = await supabase
-            .from("people")
-            .insert({ first_name: p.first_name, last_name: p.last_name, class_name: p.class_name || null, role: "Zawodnik" })
-            .select()
-            .single();
-          if (pe) throw new Error(pe.message);
-          const { error: plE } = await supabase
-            .from("players")
-            .insert({ team_id: teamId, person_id: person.id, ...defaults });
-          if (plE) throw new Error(plE.message);
+          const { data: newPerson2, error: pe2 } = await supabase.from('people')
+            .insert({ first_name: p.first_name, last_name: p.last_name, class_name: p.class_name || null, role: 'Zawodnik' })
+            .select().single();
+          if (pe2) throw new Error(pe2.message);
+          const { error: pl2 } = await supabase.from('players')
+            .insert({ team_id: teamId, person_id: newPerson2.id, ...defaults });
+          if (pl2) throw new Error(pl2.message);
           saved++;
         } catch (e) {
           failed++;
