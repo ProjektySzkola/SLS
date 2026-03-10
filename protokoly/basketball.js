@@ -979,7 +979,6 @@ async function saveProtocol(finish = false) {
         body: JSON.stringify({
           match_id:             S.matchId,
           player_id:            p.id,
-          total_points_in_match: ps.pts,
           points_1pt:           ps.pts1 || 0,
           points_2pt:           ps.pts2 || 0,
           points_3pt:           ps.pts3 || 0,

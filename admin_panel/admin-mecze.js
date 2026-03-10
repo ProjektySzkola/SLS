@@ -2851,7 +2851,6 @@ async function mzSaveFootballForm(data, body, m) {
     const getV     = n => row.querySelector(`[name="${n}"]`)?.value;
     await supabase.from('match_player_stats').upsert({
       match_id: m.id, player_id: playerId,
-      total_points_in_match: Number(getV("total_points_in_match") || 0),
       yellow_cards:          Number(getV("yellow_cards") || 0),
       red_card:              Number(getV("red_card") || 0),
       personal_fouls: 0, technical_fouls: 0,
@@ -3412,7 +3411,6 @@ async function mzSaveFillForm(data) {
         await supabase.from('match_player_stats').upsert({
           match_id: m.id,
           player_id: playerId,
-          total_points_in_match: Number(getV("total_points_in_match") || 0),
           yellow_cards: Number(getV("yellow_cards") || 0),
           red_card: Number(getV("red_card") || 0),
           personal_fouls: Number(getV("personal_fouls") || 0),
@@ -3541,11 +3539,9 @@ async function mzSaveVolleyballForm(data, body, m) {
   const playerRows = body.querySelectorAll(".vb-player-row");
   for (const row of playerRows) {
     const playerId = Number(row.dataset.playerId);
-    const pts = Number(row.querySelector("[name=total_points_in_match]")?.value || 0);
     await supabase.from('match_player_stats').upsert({
       match_id: m.id,
       player_id: playerId,
-      total_points_in_match: pts,
       yellow_cards: 0,
       red_card: 0,
       personal_fouls: 0,
@@ -4080,7 +4076,6 @@ async function mzSaveBasketballForm(data, body, m) {
     await supabase.from('match_player_stats').upsert({
       match_id: m.id,
       player_id: playerId,
-      total_points_in_match: Number(row.querySelector("[name=total_points_in_match]")?.value || 0),
       points_1pt:      Number(row.querySelector("[name=points_1pt]")?.value      || 0),
       points_2pt:      Number(row.querySelector("[name=points_2pt]")?.value      || 0),
       points_3pt:      Number(row.querySelector("[name=points_3pt]")?.value      || 0),

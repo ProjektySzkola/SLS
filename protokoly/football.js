@@ -1409,7 +1409,6 @@ async function saveProtocol(finish = false) {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           match_id: S.matchId, player_id: p.id,
-          total_points_in_match: ps.goals,
           yellow_cards: ps.yellow,
           red_card: ps.red ? 1 : 0,
           personal_fouls: 0,
