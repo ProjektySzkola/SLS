@@ -25,7 +25,10 @@ async function loadTurniej() {
     api("/tournament-format"),
     api("/tournament-settings"),
   ]);
-  adminFmtCache = fmt || {};
+  const fmtArray = fmt || [];
+  adminFmtCache = Object.fromEntries(
+    fmtArray.map(row => [row.discipline, row])
+  );
 
   buildDiscCards(adminFmtCache);
   buildRulesTab(settings || {});
