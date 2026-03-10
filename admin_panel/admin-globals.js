@@ -291,15 +291,25 @@ function matchEndpoint(path) {
       .eq('discipline', disc).eq('status', 'Rozegrany');
   }
 
-  // /people/:id/stats — przez players (person_id → player_id)
+  // /people/:id/stats — zwraca { person, asReferee, asClerk }
   const peopleStats = path.match(/^\/people\/(\d+)\/stats$/);
   if (peopleStats) {
     const pid = parseInt(peopleStats[1]);
     return async () => {
-      const { data: playerRows } = await supabase.from('players').select('id').eq('person_id', pid);
-      const playerIds = (playerRows || []).map(p => p.id);
-      if (!playerIds.length) return { data: [], error: null };
-      return supabase.from('player_stats_full').select('*').in('player_id', playerIds);
+      const [personRes, refMatches, clerkMatches] = await Promise.all([
+        supabase.from('people').select('*').eq('id', pid).single(),
+        supabase.from('matches_full').select('*').eq('referee_id', pid),
+        supabase.from('matches_full').select('*').eq('clerk_id', pid),
+      ]);
+      if (personRes.error) return { data: null, error: personRes.error };
+      return {
+        data: {
+          person:    personRes.data,
+          asReferee: refMatches.data || [],
+          asClerk:   clerkMatches.data || [],
+        },
+        error: null,
+      };
     };
   }
 
