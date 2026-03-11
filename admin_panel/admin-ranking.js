@@ -41,7 +41,7 @@ async function loadRankingView() {
   const ranked = computeRankingFromDB(discData, s);
 
   if (!ranked.length) {
-    bodyEl.innerHTML = '<div class="sv-empty">Brak danych do obliczenia rankingu.<br>Rozegraj mecze w co najmniej jednej dyscyplinie.</div>';
+    bodyEl.innerHTML = '<div class="sv-empty">Brak drużyn w tabeli.<br>Dodaj drużyny i przypisz je do rozstawienia ligowego.</div>';
     return;
   }
 
@@ -93,7 +93,7 @@ function computeRankingFromDB(discData, settings) {
     if (!data) return;
     const Wd = parseFloat(settings[disc.settingKey] ?? 1.0);
 
-    // LIGA
+    // LIGA — uwzględnij WSZYSTKIE drużyny z tabeli, nawet bez rozegranych meczów
     if (data.has_league && data.liga && data.liga.rows && data.liga.rows.length) {
       const rows = data.liga.rows;
       const N    = rows.length;
@@ -113,6 +113,7 @@ function computeRankingFromDB(discData, settings) {
             rank, N, Pb: round1(Pb), Wf, Wd, pts, known: true, isStage: false,
           });
         } else {
+          // Drużyna zgłoszona ale bez meczów — pokazuj w tabeli z zerami
           teamMap[row.id].components.push({
             disc: disc.key, emoji: disc.emoji, color: disc.color,
             phase: "liga", label: "liga — brak meczów", detail: "Nie rozegrano jeszcze żadnego meczu",
@@ -146,8 +147,8 @@ function computeRankingFromDB(discData, settings) {
     }
   });
 
+  // Zwróć WSZYSTKIE drużyny z jakimkolwiek komponentem (nie tylko te z pts > 0)
   return Object.values(teamMap)
-    .filter(t => t.components.some(c => c.pts > 0 || c.known))
     .map(t => ({
       ...t,
       total: round1(t.components.reduce((s, c) => s + c.pts, 0)),

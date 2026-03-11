@@ -349,32 +349,64 @@ function matchEndpoint(path) {
   if (standings) {
     const disc = decodeURIComponent(standings[1]);
     return async () => {
-      const { data: fmt } = await supabase.from('tournament_format')
-        .select('*').eq('discipline', disc).single();
-      const { data: rows } = await supabase.from('standings_raw')
-        .select('*').eq('discipline', disc);
+      // Pobierz format, drużyny z seeding (WSZYSTKIE zgłoszone) i rozegrane mecze
+      const [fmtRes, seedRes, playedRes] = await Promise.all([
+        supabase.from('tournament_format').select('*').eq('discipline', disc).single(),
+        supabase.from('seeding').select('team_id, teams(id, team_name, class_name)')
+          .eq('discipline', disc).eq('type', 'liga').order('position'),
+        supabase.from('standings_raw').select('*').eq('discipline', disc),
+      ]);
 
+      const fmt      = fmtRes.data;
       const pts_win  = fmt?.pts_win  ?? 3;
       const pts_draw = fmt?.pts_draw ?? 1;
       const pts_loss = fmt?.pts_loss ?? 0;
 
-      let withPts = (rows || []).map(r => ({
+      // Zbuduj mapę wyników dla drużyn które już grały
+      const playedMap = {};
+      (playedRes.data || []).forEach(r => { playedMap[r.team_id] = r; });
+
+      // Połącz: WSZYSTKIE drużyny z seeding, uzupełnij zerami jeśli nie grały
+      const seedTeams = (seedRes.data || []).map(s => s.teams).filter(Boolean);
+
+      // Fallback: jeśli brak seeding — użyj standings_raw (stare zachowanie)
+      const baseList = seedTeams.length > 0
+        ? seedTeams.map(t => {
+            const r = playedMap[t.id] || {};
+            return {
+              team_id:    t.id,
+              team_name:  t.team_name,
+              class_name: t.class_name,
+              played:     Number(r.played  || 0),
+              wins:       Number(r.wins    || 0),
+              draws:      Number(r.draws   || 0),
+              losses:     Number(r.losses  || 0),
+              gf:         Number(r.gf      || 0),
+              ga:         Number(r.ga      || 0),
+            };
+          })
+        : (playedRes.data || []).map(r => ({ ...r,
+            played: Number(r.played || 0), wins: Number(r.wins || 0),
+            draws:  Number(r.draws  || 0), losses: Number(r.losses || 0),
+            gf:     Number(r.gf     || 0), ga: Number(r.ga || 0),
+          }));
+
+      let withPts = baseList.map(r => ({
         ...r,
-        gd:  (r.gf || 0) - (r.ga || 0),
-        pts: (r.wins || 0) * pts_win + (r.draws || 0) * pts_draw + (r.losses || 0) * pts_loss,
+        gd:  r.gf - r.ga,
+        pts: r.wins * pts_win + r.draws * pts_draw + r.losses * pts_loss,
       }));
 
       // Siatkówka: pobierz bilans setów z match_periods
       if (disc === 'Siatkówka') {
-        const { data: matchesVol } = await supabase.from('matches').select(
-          'id, team1_id, team2_id'
-        ).eq('discipline', 'Siatkówka').eq('status', 'Rozegrany').eq('match_type', 'liga');
+        const { data: matchesVol } = await supabase.from('matches')
+          .select('id, team1_id, team2_id')
+          .eq('discipline', 'Siatkówka').eq('status', 'Rozegrany').eq('match_type', 'liga');
 
         if (matchesVol && matchesVol.length) {
           const matchIds = matchesVol.map(m => m.id);
           const { data: periods } = await supabase.from('match_periods')
-            .select('match_id, points_t1, points_t2')
-            .in('match_id', matchIds);
+            .select('match_id, points_t1, points_t2').in('match_id', matchIds);
 
           const matchMap = {};
           matchesVol.forEach(m => { matchMap[m.id] = m; });
@@ -399,13 +431,12 @@ function matchEndpoint(path) {
 
           withPts = withPts.map(r => {
             const sm = setStats[r.team_id] || { sw: 0, sl: 0, pf: 0, pa: 0 };
-            return {
-              ...r,
-              gf: sm.sw, ga: sm.sl, gd: sm.sw - sm.sl,
-              pf: sm.pf, pa: sm.pa, pd: sm.pf - sm.pa,
-            };
+            return { ...r, gf: sm.sw, ga: sm.sl, gd: sm.sw - sm.sl,
+                     pf: sm.pf, pa: sm.pa, pd: sm.pf - sm.pa };
           });
           withPts.sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.pd - a.pd || b.pf - a.pf);
+        } else {
+          withPts.sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
         }
       } else {
         withPts.sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
@@ -438,16 +469,25 @@ function matchEndpoint(path) {
   if (scorers) {
     const disc = decodeURIComponent(scorers[1]);
     return async () => {
-      const { data } = await supabase.from('player_stats_full').select('*')
+      // Pobierz istniejące statystyki z rozegranych meczów
+      const { data: statsData } = await supabase.from('player_stats_full').select('*')
         .eq('discipline', disc).eq('status', 'Rozegrany');
+
+      // Pobierz WSZYSTKICH zawodników ze wszystkich drużyn (niezależnie czy grali)
+      const { data: allPlayers } = await supabase.from('players')
+        .select('id, team_id, is_captain, people(first_name, last_name, class_name), teams(team_name, class_name)');
+
       const players = {};
-      (data || []).forEach(s => {
-        if (!players[s.player_id]) players[s.player_id] = {
-          player_id:     s.player_id,
-          first_name:    s.first_name,
-          last_name:     s.last_name,
-          team_name:     s.team_name,
-          class_name:    s.class_name,
+
+      // Najpierw wstaw WSZYSTKICH zawodników z zerowymi statystykami
+      (allPlayers || []).forEach(pl => {
+        players[pl.id] = {
+          player_id:     pl.id,
+          first_name:    pl.people?.first_name  || '',
+          last_name:     pl.people?.last_name   || '',
+          team_name:     pl.teams?.team_name    || '',
+          class_name:    pl.teams?.class_name   || pl.people?.class_name || '',
+          is_captain:    pl.is_captain,
           total_points:  0,
           matches_played:0,
           points_1pt:    0,
@@ -457,6 +497,28 @@ function matchEndpoint(path) {
           assists:       0,
           matches:       [],
         };
+      });
+
+      // Nadpisz/uzupełnij danymi z rozegranych meczów
+      (statsData || []).forEach(s => {
+        // Jeśli zawodnik nie był w allPlayers (np. usunięty), i tak go dodaj
+        if (!players[s.player_id]) {
+          players[s.player_id] = {
+            player_id:     s.player_id,
+            first_name:    s.first_name,
+            last_name:     s.last_name,
+            team_name:     s.team_name,
+            class_name:    s.class_name,
+            total_points:  0,
+            matches_played:0,
+            points_1pt:    0,
+            points_2pt:    0,
+            points_3pt:    0,
+            goals:         0,
+            assists:       0,
+            matches:       [],
+          };
+        }
         const p = players[s.player_id];
         p.total_points    += (s.total_points_in_match || 0);
         p.matches_played  += 1;
@@ -467,7 +529,16 @@ function matchEndpoint(path) {
         p.assists         += (s.assists    || 0);
         p.matches.push(s);
       });
-      return { data: Object.values(players).sort((a, b) => b.total_points - a.total_points), error: null };
+
+      // Sortuj: najpierw ci z punktami/golami, potem reszta alfabetycznie
+      const sorted = Object.values(players).sort((a, b) => {
+        const scoreA = a.total_points || a.goals || 0;
+        const scoreB = b.total_points || b.goals || 0;
+        if (scoreB !== scoreA) return scoreB - scoreA;
+        return (a.last_name || '').localeCompare(b.last_name || '');
+      });
+
+      return { data: sorted, error: null };
     };
   }
 
@@ -476,21 +547,46 @@ function matchEndpoint(path) {
   if (rankingData) {
     const disc = decodeURIComponent(rankingData[1]);
     return async () => {
-      const { data: fmt } = await supabase.from('tournament_format')
-        .select('*').eq('discipline', disc).single();
-      const { data: standingRows } = await supabase.from('standings_raw')
-        .select('*').eq('discipline', disc);
-      const { data: bracketMatches } = await supabase.from('matches_full')
-        .select('*').eq('discipline', disc).eq('match_type', 'puchar');
+      const [fmtRes, seedRes, playedRes, bracketRes] = await Promise.all([
+        supabase.from('tournament_format').select('*').eq('discipline', disc).single(),
+        supabase.from('seeding').select('team_id, teams(id, team_name, class_name)')
+          .eq('discipline', disc).eq('type', 'liga').order('position'),
+        supabase.from('standings_raw').select('*').eq('discipline', disc),
+        supabase.from('matches_full').select('*').eq('discipline', disc).eq('match_type', 'puchar'),
+      ]);
 
+      const fmt      = fmtRes.data;
       const pts_win  = fmt?.pts_win  ?? 3;
       const pts_draw = fmt?.pts_draw ?? 1;
       const pts_loss = fmt?.pts_loss ?? 0;
 
-      const ligaResult = (standingRows || []).map(r => ({
+      // Zbuduj mapę wyników
+      const playedMap = {};
+      (playedRes.data || []).forEach(r => { playedMap[r.team_id] = r; });
+
+      // WSZYSTKIE drużyny z seeding, uzupełnione zerami jeśli nie grały
+      const seedTeams = (seedRes.data || []).map(s => s.teams).filter(Boolean);
+      const baseList  = seedTeams.length > 0
+        ? seedTeams.map(t => {
+            const r = playedMap[t.id] || {};
+            return {
+              id: t.id, team_name: t.team_name, class_name: t.class_name,
+              played:  Number(r.played  || 0), wins:   Number(r.wins   || 0),
+              draws:   Number(r.draws   || 0), losses: Number(r.losses || 0),
+              gf:      Number(r.gf      || 0), ga:     Number(r.ga     || 0),
+            };
+          })
+        : (playedRes.data || []).map(r => ({ ...r,
+            id: r.team_id,
+            played: Number(r.played || 0), wins: Number(r.wins || 0),
+            draws:  Number(r.draws  || 0), losses: Number(r.losses || 0),
+            gf:     Number(r.gf     || 0), ga:    Number(r.ga     || 0),
+          }));
+
+      const ligaResult = baseList.map(r => ({
         ...r,
-        gd:  (r.gf || 0) - (r.ga || 0),
-        pts: (r.wins || 0) * pts_win + (r.draws || 0) * pts_draw + (r.losses || 0) * pts_loss,
+        gd:  r.gf - r.ga,
+        pts: r.wins * pts_win + r.draws * pts_draw + r.losses * pts_loss,
       })).sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
       ligaResult.forEach((t, i) => { t.liga_rank = i + 1; });
 
@@ -502,7 +598,8 @@ function matchEndpoint(path) {
           bestRoundIdx: -1, bestRound: null, wonFinal: false,
         };
       };
-      (bracketMatches || []).forEach(m => {
+      const bracketMatches = bracketRes.data || [];
+      bracketMatches.forEach(m => {
         const rIdx = ROUND_ORDER.indexOf(m.cup_round);
         ensure(m.team1_id, m.team1_name);
         ensure(m.team2_id, m.team2_name);
@@ -542,7 +639,7 @@ function matchEndpoint(path) {
         has_cup:    !!(fmt?.has_cup),
         liga:  { rows: ligaResult, format: { pts_win, pts_draw, pts_loss }, total: ligaResult.length },
         cup:   { teams: cupData, total: cupData.length,
-                 rounds: ROUND_ORDER.filter(r => (bracketMatches||[]).some(m => m.cup_round === r)) },
+                 rounds: ROUND_ORDER.filter(r => bracketMatches.some(m => m.cup_round === r)) },
       };
     };
   }
