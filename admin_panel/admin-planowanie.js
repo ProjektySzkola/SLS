@@ -1,7 +1,15 @@
 /* normFmt() zdefiniowane globalnie w admin-globals.js */
 /* ── normSeed: spłaszcza rekord seeding (join z teams) ───────────────── */
 function normSeed(s) {
-  return { ...s, id: s.team_id ?? s.id, team_name: s.teams?.team_name ?? s.team_name ?? '?', class_name: s.teams?.class_name ?? s.class_name ?? '' };
+  // BUG-FIX: id musi być zawsze liczbą całkowitą — parseInt() zapobiega błędom
+  // porównania string vs number w matchExists() i _matchKey()
+  const rawId = s.team_id ?? s.id;
+  return {
+    ...s,
+    id:         parseInt(rawId, 10),
+    team_name:  s.teams?.team_name  ?? s.team_name  ?? '?',
+    class_name: s.teams?.class_name ?? s.class_name ?? '',
+  };
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
@@ -352,11 +360,20 @@ async function openGenWizard() {
   $("pl-gen-backdrop").classList.remove("hidden");
 
   // Zawsze przeładuj świeże dane (nie cache)
-  const [fmtAll, teams] = await Promise.all([
+  const [fmtAll, teams, freshMatches] = await Promise.all([
     api("/tournament-format"),
     api("/teams"),
+    api("/matches"),
   ]);
   _genFmt = normFmt(fmtAll);
+
+  // BUG-FIX: Przebuduj _serverMatchKeys ze świeżych danych bazy —
+  // bez tego matchExists() nie wykrywa meczów zapisanych w poprzedniej sesji
+  // ani po zmianie rozstawienia, co powoduje generowanie duplikatów.
+  _serverMatchKeys.clear();
+  (freshMatches || []).forEach(m => {
+    _serverMatchKeys.add(_matchKey(m.discipline, m.match_type || "liga", m.team1_id, m.team2_id));
+  });
 
   // Pobierz seedy dla wszystkich dyscyplin
   const DISCS = ["Piłka Nożna","Koszykówka","Siatkówka"];
@@ -1075,21 +1092,27 @@ function buildCupPairsFromGroups(groupMap, numGroups, advance, groupLabels) {
 const _serverMatchKeys = new Set();
 
 function _matchKey(disc, type, id1, id2) {
-  // Normalizuj kolejność drużyn (mniejsze id pierwsze)
-  const [a, b] = id1 < id2 ? [id1, id2] : [id2, id1];
+  // BUG-FIX: parseInt() zapewnia że klucze są zawsze liczbowe,
+  // bez względu czy id pochodzi z bazy (string) czy z JS (number)
+  const n1 = parseInt(id1, 10);
+  const n2 = parseInt(id2, 10);
+  const [a, b] = n1 < n2 ? [n1, n2] : [n2, n1];
   return `${disc}|${type}|${a}|${b}`;
 }
 
 function matchExists(disc, type, id1, id2) {
+  // BUG-FIX: parseInt() zapewnia spójność typów przy porównywaniu ID
+  const n1 = parseInt(id1, 10);
+  const n2 = parseInt(id2, 10);
   // Sprawdź lokalny cache JS
   const localFound = [...plQueue, ...plScheduled].some(m =>
     m.disc === disc && m.type === type &&
-    ((m.team1.id === id1 && m.team2.id === id2) ||
-     (m.team1.id === id2 && m.team2.id === id1))
+    ((parseInt(m.team1.id, 10) === n1 && parseInt(m.team2.id, 10) === n2) ||
+     (parseInt(m.team1.id, 10) === n2 && parseInt(m.team2.id, 10) === n1))
   );
   if (localFound) return true;
   // P4 FIX: Sprawdź też zbiór meczów z bazy (załadowany przy inicie / generowaniu)
-  return _serverMatchKeys.has(_matchKey(disc, type, id1, id2));
+  return _serverMatchKeys.has(_matchKey(disc, type, n1, n2));
 }
 
 function genId(disc, type, id1, id2) {

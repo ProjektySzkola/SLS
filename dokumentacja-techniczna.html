@@ -911,6 +911,22 @@ code {
 
     <div class="call call-fix">
       <span class="call-ico">✅</span>
+      <p><strong>NAPRAWIONE — string vs number mismatch w matchExists() / _matchKey() / normSeed():</strong>
+      Supabase zwracał <code>team_id</code> i <code>id</code> z bazy jako stringi w niektórych kontekstach (np. po join z tabelą <code>seeding</code>), podczas gdy lokalne obiekty drużyn używały typów numerycznych.
+      Skutki: (1) <code>_matchKey()</code> budował klucze np. <code>"Piłka Nożna|liga|NaN|5"</code> gdy id było <code>undefined</code>, (2) <code>matchExists()</code> nie wykrywało istniejących meczów przy porównaniu string <code>"3"</code> vs number <code>3</code>, (3) drużyna pojawiała się jednocześnie w slocie rozstawienia i w puli.
+      <strong>Poprawka:</strong> <code>parseInt(..., 10)</code> dodane w <code>normSeed()</code>, <code>_matchKey()</code>, <code>matchExists()</code> (<code>admin-planowanie.js</code>) oraz w <code>srInitWorkspace()</code> (<code>admin-rozstawienie.js</code>).</p>
+    </div>
+
+    <div class="call call-fix">
+      <span class="call-ico">✅</span>
+      <p><strong>NAPRAWIONE — brak synchronizacji _serverMatchKeys w openGenWizard():</strong>
+      Przy każdym otwarciu generatora meczy <code>_serverMatchKeys</code> (zbiór kluczy meczów pobranych z bazy) nie był aktualizowany — zawierał tylko dane z momentu inicjalizacji planera.
+      Skutki: po zapisaniu rozstawienia i otwarciu generatora, <code>matchExists()</code> nie wykrywał meczów utworzonych w poprzednich sesjach → generator oferował już istniejące mecze jako „nowe" lub pokazywał niepoprawną liczbę „+X nowych".
+      <strong>Poprawka:</strong> <code>openGenWizard()</code> pobiera teraz <code>/matches</code> równolegle z formatem i przebudowuje <code>_serverMatchKeys</code> ze świeżych danych bazy przed wyświetleniem podglądu (<code>admin-planowanie.js</code>).</p>
+    </div>
+
+    <div class="call call-fix">
+      <span class="call-ico">✅</span>
       <p><strong>NAPRAWIONE — CSS vs JS mismatch w klasyfikacji strzelców:</strong> Poprzedni CSS zawierał klasy <code>.sv-scorers-section</code>, <code>.sv-sc-rank-cell</code> itp., które nie istniały w HTML generowanym przez <code>svBuildScorers()</code>. CSS przepisany z prawdziwych klas: <code>.sv-sc-medal</code>, <code>.sv-sc-name</code>, <code>.sv-sc-pts--main</code>, <code>.sv-sc-bar-wrap</code> itd.</p>
     </div>
 

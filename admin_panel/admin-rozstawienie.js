@@ -216,13 +216,19 @@ async function srInitWorkspace() {
   // wgraj zapisane rozstawienie (position = indeks slotu, -1 = pula)
   if (seedRaw?.length) {
     seedRaw.filter(t => t.position >= 0 && t.position < srSlots.length).forEach(t => {
-      srSlots[t.position].team = { id: t.team_id ?? t.id, team_name: t.teams?.team_name ?? t.team_name, class_name: t.teams?.class_name ?? t.class_name };
+      // BUG-FIX: parseInt() zapobiega duplikacji drużyny w slocie i puli
+      // gdy team_id z Supabase jest stringiem a teams[].id liczbą
+      srSlots[t.position].team = {
+        id:         parseInt(t.team_id ?? t.id, 10),
+        team_name:  t.teams?.team_name  ?? t.team_name,
+        class_name: t.teams?.class_name ?? t.class_name,
+      };
     });
   }
 
   // pula = nieprzypisane
   const assignedIds = new Set(srSlots.filter(s => s.team).map(s => s.team.id));
-  srPool = srAllTeams.filter(t => !assignedIds.has(t.id));
+  srPool = srAllTeams.filter(t => !assignedIds.has(parseInt(t.id, 10)));
 
   srMarkClean();
   srUpdateLockBtn();
