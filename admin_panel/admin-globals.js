@@ -72,6 +72,17 @@ const DISC_EMOJI = {
 
 const ROUND_ORDER = ['1/16', '1/8', '1/4', 'Półfinał', 'Finał'];
 
+/* ── normFmt: tablica tournament_format → mapa {disc: fmt} ──────────── */
+function normFmt(raw) {
+  if (!raw) return {};
+  if (Array.isArray(raw)) {
+    const m = {};
+    raw.forEach(f => { if (f.discipline) m[f.discipline] = f; });
+    return m;
+  }
+  return raw;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    READ — matchEndpoint (GET)
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -1454,3 +1465,4 @@ window.saveTeamStats        = saveTeamStats;
 window.updateTeamStats      = updateTeamStats;
 window.savePeriods          = savePeriods;
 window.saveLogs             = saveLogs;
+window.normFmt              = normFmt;

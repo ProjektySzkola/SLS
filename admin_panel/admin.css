@@ -5915,26 +5915,28 @@ details.rk-scheme-box[open] .rk-scheme-title { border-bottom: 1px solid var(--bo
 .sv-sc-divider span {
   letter-spacing: .04em;
 }
+
 /* ══════════════════════════════════════════════════════════════════════════════
-   KLASYFIKACJA STRZELCÓW (⚽ Piłka Nożna) & RZUCAJĄCYCH (🏀 Koszykówka)
-   Klasy: .sv-scorers-wrap, .sv-scorers-header, .sv-scorers-table, .sv-sc-*
+   KLASYFIKACJA STRZELCÓW ⚽ / RZUCAJĄCYCH 🏀
+   Klasy zgodne z admin-sport.js (svBuildScorers)
 ══════════════════════════════════════════════════════════════════════════════ */
 
-/* ── Wrapper sekcji ────────────────────────────────────────────────────────── */
-.sv-scorers-section {
-  margin-top: 2rem;
+/* ── Wrapper sekcji ─────────────────────────────────────────────────────── */
+.sv-scorers {
+  padding: .25rem 0;
 }
 
 .sv-scorers-header {
   display: flex;
   align-items: center;
-  gap: .75rem;
+  justify-content: space-between;
+  gap: 1rem;
   margin-bottom: 1rem;
   padding-bottom: .6rem;
   border-bottom: 2px solid var(--border);
 }
 
-.sv-scorers-header h3 {
+.sv-scorers-title {
   font-size: 1rem;
   font-weight: 700;
   color: var(--text);
@@ -5942,31 +5944,18 @@ details.rk-scheme-box[open] .rk-scheme-title { border-bottom: 1px solid var(--bo
   letter-spacing: .02em;
 }
 
-.sv-scorers-header .sv-sc-badge {
-  font-size: .7rem;
-  padding: .2rem .55rem;
+.sv-scorers-count {
+  font-size: .75rem;
+  color: var(--muted);
+  background: var(--bg3);
+  border: 1px solid var(--border);
   border-radius: 9999px;
-  font-weight: 700;
-  letter-spacing: .04em;
-  text-transform: uppercase;
+  padding: .2rem .6rem;
+  white-space: nowrap;
 }
 
-/* Piłka Nożna — zielony */
-.sv-sc-badge--football {
-  background: rgba(34,197,94,.15);
-  color: #22c55e;
-  border: 1px solid rgba(34,197,94,.3);
-}
-
-/* Koszykówka — pomarańczowy */
-.sv-sc-badge--basketball {
-  background: rgba(251,146,60,.15);
-  color: #fb923c;
-  border: 1px solid rgba(251,146,60,.3);
-}
-
-/* ── Tabela klasyfikacji ────────────────────────────────────────────────────── */
-.sv-scorers-wrap {
+/* ── Tabela ─────────────────────────────────────────────────────────────── */
+.sv-scorers-table-wrap {
   overflow-x: auto;
   border-radius: var(--radius);
   border: 1px solid var(--border);
@@ -5985,9 +5974,9 @@ details.rk-scheme-box[open] .rk-scheme-title { border-bottom: 1px solid var(--bo
 }
 
 .sv-scorers-table th {
-  padding: .6rem .75rem;
+  padding: .55rem .7rem;
   text-align: left;
-  font-size: .72rem;
+  font-size: .7rem;
   font-weight: 700;
   color: var(--muted);
   letter-spacing: .06em;
@@ -5995,164 +5984,156 @@ details.rk-scheme-box[open] .rk-scheme-title { border-bottom: 1px solid var(--bo
   white-space: nowrap;
 }
 
-.sv-scorers-table th.sc-num  { width: 2.5rem; text-align: center; }
-.sv-scorers-table th.sc-rank { width: 2.75rem; text-align: center; }
-.sv-scorers-table th.sc-pts  { width: 4rem;   text-align: center; }
-
 .sv-scorers-table td {
-  padding: .55rem .75rem;
+  padding: .5rem .7rem;
   border-bottom: 1px solid var(--border);
   vertical-align: middle;
 }
 
 .sv-scorers-table tbody tr:last-child td { border-bottom: none; }
+.sv-scorers-table tbody tr:hover { background: var(--bg3); }
 
-.sv-scorers-table tbody tr:hover {
-  background: var(--bg3);
-}
-
-/* ── Pozycja (medal) ──────────────────────────────────────────────────────── */
-.sv-sc-rank-cell {
+/* ── Medal / Pozycja ─────────────────────────────────────────────────────── */
+th.sv-sc-medal,
+td.sv-sc-medal {
+  width: 2.4rem;
   text-align: center;
+  font-size: 1.05rem;
+  padding-right: .3rem;
+}
+
+.sv-sc-rank {
+  font-size: .8rem;
   font-weight: 700;
-  font-size: .875rem;
-  min-width: 2.5rem;
+  color: var(--muted);
 }
 
-.sv-sc-rank-medal {
-  font-size: 1.1rem;
-  line-height: 1;
+/* ── Zawodnik ────────────────────────────────────────────────────────────── */
+th.sv-sc-player { min-width: 160px; }
+
+td.sv-sc-player {
+  padding-right: 1rem;
 }
 
-/* złoto / srebro / brąz */
-.sv-sc-rank--1  { color: #f59e0b; }
-.sv-sc-rank--2  { color: #9ca3af; }
-.sv-sc-rank--3  { color: #b45309; }
-
-/* ── Zawodnik ─────────────────────────────────────────────────────────────── */
-.sv-sc-player {
-  display: flex;
-  flex-direction: column;
-  gap: .1rem;
-}
-
-.sv-sc-player-name {
+.sv-sc-name {
   font-weight: 600;
   color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: .3rem;
   white-space: nowrap;
 }
 
-.sv-sc-player-meta {
+.sv-sc-team {
   font-size: .72rem;
   color: var(--muted);
-  display: flex;
-  gap: .4rem;
-  flex-wrap: wrap;
+  margin-top: .1rem;
+  white-space: nowrap;
 }
 
 .sv-sc-captain {
-  color: #f59e0b;
   font-size: .7rem;
+  color: #f59e0b;
+  cursor: default;
 }
 
-/* ── Drużyna ─────────────────────────────────────────────────────────────── */
-.sv-sc-team-cell {
-  font-size: .8rem;
-  color: var(--muted);
-  white-space: nowrap;
+/* Pasek postępu pod nazwą */
+.sv-sc-bar-wrap {
+  margin-top: .3rem;
+  height: 3px;
+  background: var(--bg3);
+  border-radius: 2px;
   overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 130px;
+  max-width: 140px;
 }
 
-/* ── Wyniki liczbowe ─────────────────────────────────────────────────────── */
-.sv-sc-stat-cell {
+.sv-sc-bar {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width .3s ease;
+  min-width: 2px;
+}
+
+/* ── Kolumny statystyczne ────────────────────────────────────────────────── */
+th.sv-sc-num,
+td.sv-sc-num {
+  width: 3rem;
   text-align: center;
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: .88rem;
-  font-weight: 600;
-  white-space: nowrap;
+  color: var(--muted);
+  font-size: .82rem;
 }
 
-/* Główna statystyka (gole / punkty) */
-.sv-sc-stat-cell--main {
+/* Główna statystyka (Gole / Punkty) */
+th.sv-sc-pts,
+td.sv-sc-pts {
+  text-align: center;
+  width: 3.5rem;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+td.sv-sc-pts--main {
   font-size: 1rem;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--text);
 }
 
-/* Piłka Nożna — gole zielone */
-.sv-sc-stat-cell--goals {
-  color: #22c55e;
+/* Piłka Nożna — strzelcy: gole pokolorowane */
+.sv-scorers-table .sv-sc-pts--main {
+  color: var(--text);
 }
 
-/* Koszykówka — punkty pomarańczowe */
-.sv-sc-stat-cell--pts {
-  color: #fb923c;
-}
-
-/* Asysty, mecze — szare */
-.sv-sc-stat-cell--secondary {
-  color: var(--muted);
-  font-weight: 400;
-}
-
-/* ── Podtypy rzutów (koszykówka) ─────────────────────────────────────────── */
-.sv-sc-shots {
-  display: flex;
-  gap: .25rem;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.sv-sc-shot-badge {
-  font-size: .68rem;
-  padding: .1rem .35rem;
-  border-radius: 4px;
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-weight: 600;
-}
-
-.sv-sc-shot-badge--1pt {
-  background: rgba(34,197,94,.15);
-  color: #22c55e;
-}
-
-.sv-sc-shot-badge--2pt {
-  background: rgba(251,146,60,.15);
-  color: #fb923c;
-}
-
-.sv-sc-shot-badge--3pt {
-  background: rgba(139,92,246,.15);
-  color: #8b5cf6;
-}
-
-/* ── Mecze zagrane ─────────────────────────────────────────────────────── */
-.sv-sc-matches-cell {
+/* Sub-statystyki (1pt / 2pt / 3pt / kartki / faule) */
+th.sv-sc-sub,
+td.sv-sc-sub {
   text-align: center;
+  width: 2.8rem;
   font-size: .8rem;
   color: var(--muted);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
 }
 
-/* ── Top-3 wyróżnienie wiersza ──────────────────────────────────────────── */
-.sv-sc-row--top1 { background: rgba(245,158,11,.06) !important; }
-.sv-sc-row--top2 { background: rgba(156,163,175,.06) !important; }
-.sv-sc-row--top3 { background: rgba(180,83,9,.05)  !important; }
-
-.sv-sc-row--top1:hover { background: rgba(245,158,11,.12) !important; }
-.sv-sc-row--top2:hover { background: rgba(156,163,175,.10) !important; }
-.sv-sc-row--top3:hover { background: rgba(180,83,9,.09)   !important; }
-
-/* ── Brak danych ──────────────────────────────────────────────────────────── */
-.sv-sc-empty {
-  padding: 2rem;
+/* Śr/m */
+th.sv-sc-avg,
+td.sv-sc-avg {
   text-align: center;
+  width: 3.2rem;
+  font-size: .8rem;
   color: var(--muted);
-  font-size: .875rem;
+  white-space: nowrap;
 }
 
-/* ── Rozstawienie — disabled cup tab + hint ────────────────────────────── */
+/* ── Wiersze specjalne ───────────────────────────────────────────────────── */
+.sv-sc-row { }
+
+/* Top-3 — subtelne wyróżnienie tła */
+.sv-sc-row--top3:nth-child(1) { background: rgba(245,158,11,.07); }
+.sv-sc-row--top3:nth-child(2) { background: rgba(156,163,175,.05); }
+.sv-sc-row--top3:nth-child(3) { background: rgba(180,83,9,.05); }
+
+.sv-sc-row--top3:nth-child(1):hover { background: rgba(245,158,11,.13); }
+.sv-sc-row--top3:nth-child(2):hover { background: rgba(156,163,175,.10); }
+.sv-sc-row--top3:nth-child(3):hover { background: rgba(180,83,9,.09); }
+
+/* ── Legenda ─────────────────────────────────────────────────────────────── */
+.sv-scorers-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem 1.25rem;
+  margin-top: .75rem;
+  padding: .6rem .75rem;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: .75rem;
+  color: var(--muted);
+}
+
+.sv-scorers-legend strong {
+  color: var(--text);
+}
+
+/* ── Rozstawienie — disabled cup tab + hint ───────────────────────────── */
 .sr-type-tab--disabled {
   opacity: .4;
   cursor: not-allowed !important;
@@ -6165,8 +6146,8 @@ details.rk-scheme-box[open] .rk-scheme-title { border-bottom: 1px solid var(--bo
   gap: .3rem;
   font-size: .72rem;
   color: var(--muted);
-  background: rgba(239,68,68,.1);
-  border: 1px solid rgba(239,68,68,.25);
+  background: rgba(239,68,68,.08);
+  border: 1px solid rgba(239,68,68,.22);
   border-radius: 6px;
   padding: .2rem .5rem;
   margin-top: .4rem;
@@ -6177,8 +6158,9 @@ details.rk-scheme-box[open] .rk-scheme-title { border-bottom: 1px solid var(--bo
 
 /* ── Responsive ─────────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
-  .sv-sc-team-cell    { max-width: 80px; }
-  .sv-sc-shots        { flex-direction: column; gap: .1rem; }
+  th.sv-sc-sub,
+  td.sv-sc-sub { display: none; }
   .sv-scorers-table th,
   .sv-scorers-table td { padding: .4rem .4rem; }
+  .sv-sc-bar-wrap { max-width: 80px; }
 }

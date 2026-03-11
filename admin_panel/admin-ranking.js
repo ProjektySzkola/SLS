@@ -394,18 +394,20 @@ function wireRankingSettingsEvents(root) {
     const btn    = root.querySelector("#rk-save-btn");
     const status = root.querySelector("#rk-save-status");
     btn.disabled = true; btn.textContent = "Zapisywanie…";
+
     const body = {};
     root.querySelectorAll(".rk-slider[data-setting]").forEach(sl => {
       body[sl.dataset.setting] = parseFloat(sl.value).toFixed(1);
     });
-    const rows2 = Object.entries(body).map(([key, value]) => ({ key, value: String(value ?? '') }));
-    const { error: wErr } = await supabase.from('tournament_settings').upsert(rows2, { onConflict: 'key' });
+
+    const result = await saveTournamentSettings(body);
     btn.disabled = false; btn.textContent = "💾 Zapisz wagi";
-    if (!wErr) {
+
+    if (result && !result.error) {
       status.textContent = "✓ Zapisano"; status.style.color = "var(--green)";
       setTimeout(() => { status.textContent = ""; }, 2500);
     } else {
-      status.textContent = "✗ Błąd"; status.style.color = "var(--red)";
+      status.textContent = "✗ Błąd: " + (result?.error || "nieznany"); status.style.color = "var(--red)";
     }
   });
 }

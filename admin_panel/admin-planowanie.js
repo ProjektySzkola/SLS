@@ -1,9 +1,4 @@
-/* ── normFmt: tablica tournament_format → mapa {disc: fmt} ──────────── */
-function normFmt(raw) {
-  if (!raw) return {};
-  if (Array.isArray(raw)) { const m = {}; raw.forEach(f => { if (f.discipline) m[f.discipline] = f; }); return m; }
-  return raw;
-}
+/* normFmt() zdefiniowane globalnie w admin-globals.js */
 /* ── normSeed: spłaszcza rekord seeding (join z teams) ───────────────── */
 function normSeed(s) {
   return { ...s, id: s.team_id ?? s.id, team_name: s.teams?.team_name ?? s.team_name ?? '?', class_name: s.teams?.class_name ?? s.class_name ?? '' };

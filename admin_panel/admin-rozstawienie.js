@@ -1,12 +1,4 @@
-/* ── normFmt: tablica tournament_format → mapa {disc: fmt} ──────────── */
-if (typeof normFmt === "undefined") {
-  // eslint-disable-next-line no-inner-declarations
-  function normFmt(raw) {
-    if (!raw) return {};
-    if (Array.isArray(raw)) { const m = {}; raw.forEach(f => { if (f.discipline) m[f.discipline] = f; }); return m; }
-    return raw;
-  }
-}
+/* normFmt() zdefiniowane globalnie w admin-globals.js */
 
 /* ════════════════════════════════════════════════════════════════════════════
    DODAJ ZAWODNIKA
@@ -81,17 +73,17 @@ function showAddPlayerModal(teamId) {
     btn.disabled = true; btn.textContent = "…";
 
     try {
-      const { data: person, error: pe } = await supabase
-        .from("people")
-        .insert({ first_name: first, last_name: last, class_name: cls || null, role: "Zawodnik" })
-        .select().single();
-      if (pe) throw new Error(pe.message);
-      const { error: plE } = await supabase.from("players").insert({
-        team_id: teamId, person_id: person.id,
-        is_captain: cap ? 1 : 0, rodo_consent: rodo ? 1 : 0,
-        participation_consent: parent ? 1 : 0, entry_fee_paid: fee,
+      const result = await createPlayer({
+        team_id:               teamId,
+        first_name:            first,
+        last_name:             last,
+        class_name:            cls || null,
+        is_captain:            cap,
+        rodo_consent:          rodo,
+        participation_consent: parent,
+        entry_fee_paid:        fee,
       });
-      if (plE) throw new Error(plE.message);
+      if (result?.error) throw new Error(result.error);
       overlay.remove();
       showToast("✓ Zawodnik dodany");
       // odśwież skład drużyny
@@ -754,17 +746,9 @@ async function srSave() {
     .filter(Boolean);
 
   try {
-    const { error: delErr } = await supabase
-      .from("seeding")
-      .delete()
-      .eq("discipline", srDisc)
-      .eq("type", srType);
-    if (delErr) throw new Error(delErr.message);
-    if (seeds.length) {
-      const rows = seeds.map(s => ({ discipline: srDisc, type: srType, team_id: s.team_id, position: s.position }));
-      const { error: insErr } = await supabase.from("seeding").insert(rows);
-      if (insErr) throw new Error(insErr.message);
-    }
+    const result = await saveSeeding(srDisc, srType, seeds);
+    if (result?.error) throw new Error(result.error);
+
     srMarkClean();
     showSeedToast("✓ Rozstawienie zapisane!");
     btn.textContent = "✓ Zapisano";

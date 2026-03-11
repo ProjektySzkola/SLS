@@ -1,13 +1,4 @@
-/* ── normFmt: konwertuje tablicę tournament_format → mapę {disc: fmt} ──── */
-function normFmt(raw) {
-  if (!raw) return {};
-  if (Array.isArray(raw)) {
-    const map = {};
-    raw.forEach(f => { if (f.discipline) map[f.discipline] = f; });
-    return map;
-  }
-  return raw;
-}
+/* normFmt() zdefiniowane globalnie w admin-globals.js */
 
 /* ════════════════════════════════════════════════════════════════════════════
    WIDOKI SPORTOWE — tabele ligowe + drabinka pucharowa
@@ -460,18 +451,18 @@ async function svEndLeague(discipline, fmt, standingsData, seedingMap) {
     return { ok: false, msg: `Mecze w rundzie „${firstRound}" już istnieją. Usuń je najpierw.` };
   }
 
-  // ── Utwórz mecze ─────────────────────────────────────────────────────────
+  // ── Utwórz mecze (przez globalny createMatch() z loaderem i wzbogaconymi danymi) ──
   let created = 0;
   for (const pair of pairs) {
-    const { error: sportMatchErr } = await supabase.from('matches').insert({
-        discipline,
-        match_type: 'puchar',
-        cup_round:  firstRound,
-        team1_id:   pair.t1.id,
-        team2_id:   pair.t2.id,
-        status:     'Planowany',
-      });
-    if (!sportMatchErr) created++;
+    const result = await createMatch({
+      discipline,
+      match_type: 'puchar',
+      cup_round:  firstRound,
+      team1_id:   pair.t1.id ?? pair.t1.team_id,
+      team2_id:   pair.t2.id ?? pair.t2.team_id,
+      status:     'Planowany',
+    });
+    if (result && !result.error) created++;
   }
 
   return { ok: true, created, pairs, firstRound };

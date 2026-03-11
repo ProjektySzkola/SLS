@@ -1,9 +1,4 @@
-/* ── normFmt: tablica tournament_format → mapa {disc: fmt} ──────────── */
-function normFmt(raw) {
-  if (!raw) return {};
-  if (Array.isArray(raw)) { const m = {}; raw.forEach(f => { if (f.discipline) m[f.discipline] = f; }); return m; }
-  return raw;
-}
+/* normFmt() zdefiniowane globalnie w admin-globals.js */
 
 /* ════════════════════════════════════════════════════════════════════════════
    USTAWIENIA TURNIEJU
