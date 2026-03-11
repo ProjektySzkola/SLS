@@ -111,8 +111,18 @@ function matchEndpoint(path) {
     return () => supabase.from('teams').select('*').eq('id', tid).single();
   }
 
+  /* ── /matches?discipline=X&match_type=Y ── (MUSI być przed samym discipline=X) */
+  const discTypeMatch = path.match(/^\/matches\?discipline=([^&]+)&match_type=([^&]+)$/);
+  if (discTypeMatch) {
+    const disc = decodeURIComponent(discTypeMatch[1]);
+    const type = decodeURIComponent(discTypeMatch[2]);
+    return () => supabase.from('matches_full').select('*')
+      .eq('discipline', disc).eq('match_type', type)
+      .order('match_date').order('match_time');
+  }
+
   /* ── /matches?discipline=X ── */
-  const discMatch = path.match(/^\/matches\?discipline=(.+)$/);
+  const discMatch = path.match(/^\/matches\?discipline=([^&]+)$/);
   if (discMatch) {
     const disc = decodeURIComponent(discMatch[1]);
     return () => supabase.from('matches_full').select('*')
@@ -121,20 +131,10 @@ function matchEndpoint(path) {
   }
 
   /* ── /matches?status=X ── */
-  const statusMatch = path.match(/^\/matches\?status=(.+)$/);
+  const statusMatch = path.match(/^\/matches\?status=([^&]+)$/);
   if (statusMatch) {
     return () => supabase.from('matches_full').select('*')
       .eq('status', decodeURIComponent(statusMatch[1]));
-  }
-
-  /* ── /matches?discipline=X&match_type=Y ── */
-  const discTypeMatch = path.match(/^\/matches\?discipline=([^&]+)&match_type=(.+)$/);
-  if (discTypeMatch) {
-    const disc = decodeURIComponent(discTypeMatch[1]);
-    const type = decodeURIComponent(discTypeMatch[2]);
-    return () => supabase.from('matches_full').select('*')
-      .eq('discipline', disc).eq('match_type', type)
-      .order('match_date').order('match_time');
   }
 
   /* ── /matches/:id ── pełne dane meczu z przetworzonymi koszami/setami/połowami */
