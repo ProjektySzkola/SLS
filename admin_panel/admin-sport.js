@@ -41,16 +41,29 @@ async function loadSportView(discipline) {
   badgesEl.innerHTML = "";
 
   // Pobierz format, tabelę i bracket równolegle
-  const [fmtAll, standingsData, bracketData, matchesData] = await Promise.all([
+  const [fmtAll, standingsData, bracketData, matchesData, seedingRaw] = await Promise.all([
     api('/tournament-format'),
     api(`/standings-custom/${encodeURIComponent(discipline)}`),
     api(`/bracket/${encodeURIComponent(discipline)}`),
     api(`/matches?discipline=${encodeURIComponent(discipline)}`),
+    api(`/seeding/${encodeURIComponent(discipline)}/liga`),
   ]);
 
   const fmt = normFmt(fmtAll)[discipline] || {};
   const hasLeague = !!fmt.has_league;
   const hasCup    = !!fmt.has_cup;
+
+  // Zbuduj mapę rozstawienia: team_id → indeks grupy (na podstawie position i teams_per_group)
+  const seedingMap = {};  // teamId -> groupIndex
+  const teamsPerGroupFmt = fmt.teams_per_group || 4;
+  if (Array.isArray(seedingRaw)) {
+    seedingRaw.forEach(s => {
+      const teamId = s.team_id ?? s.id;
+      if (teamId != null && s.position >= 0) {
+        seedingMap[teamId] = Math.floor(s.position / teamsPerGroupFmt);
+      }
+    });
+  }
 
   // Badges formatu
   badgesEl.innerHTML = [
@@ -75,13 +88,13 @@ async function loadSportView(discipline) {
     btn.addEventListener("click", () => {
       tabsEl.querySelectorAll(".sv-tab").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
-      svShowTab(slug, btn.dataset.tab, { fmt, standingsData, bracketData, matchesData, discipline });
+      svShowTab(slug, btn.dataset.tab, { fmt, standingsData, bracketData, matchesData, discipline, seedingMap });
     });
   });
 
   // Pokaż pierwszą zakładkę
   const firstTab = tabs[0]?.id || "terminarz";
-  svShowTab(slug, firstTab, { fmt, standingsData, bracketData, matchesData, discipline });
+  svShowTab(slug, firstTab, { fmt, standingsData, bracketData, matchesData, discipline, seedingMap });
 }
 
 // ── Przełączanie zakładki ─────────────────────────────────────────────────────
@@ -119,7 +132,7 @@ function svShowTab(slug, tab, ctx) {
         endBtn.disabled = true;
         endBtn.textContent = '⏳ Tworzę parowania…';
 
-        const result = await svEndLeague(ctx.discipline, ctx.fmt, ctx.standingsData);
+        const result = await svEndLeague(ctx.discipline, ctx.fmt, ctx.standingsData, ctx.seedingMap);
 
         if (result.ok) {
           endBtn.closest('.sv-end-league').innerHTML = `
@@ -169,7 +182,7 @@ function svShowTab(slug, tab, ctx) {
 
 // ── TABELA LIGOWA ─────────────────────────────────────────────────────────────
 
-function svBuildLeague({ fmt, standingsData, discipline }, containerEl) {
+function svBuildLeague({ fmt, standingsData, discipline, seedingMap }, containerEl) {
   if (!standingsData || !standingsData.rows) {
     return `<div class="sv-empty">Brak danych ligowych.<br>Upewnij się że format „Liga" jest włączony.</div>`;
   }
@@ -201,12 +214,34 @@ function svBuildLeague({ fmt, standingsData, discipline }, containerEl) {
   }
 
   // ── Podziel na grupy ─────────────────────────────────────────────────────
+  // WAŻNE: używamy seedingMap (rozstawienie) do określenia przynależności do grupy,
+  // NIE kolejności w posortowanej tabeli — drużyna przypisana do grupy A musi
+  // zostać w grupie A niezależnie od aktualnej liczby punktów.
   let groups = [];
   if (groupsCount > 1) {
+    // Inicjuj puste grupy
     for (let g = 0; g < groupsCount; g++) {
-      const slice = rows.slice(g * teamsPerGroup, (g + 1) * teamsPerGroup);
-      groups.push({ name: `Grupa ${String.fromCharCode(65 + g)}`, letter: String.fromCharCode(65 + g), rows: slice });
+      groups.push({ name: `Grupa ${String.fromCharCode(65 + g)}`, letter: String.fromCharCode(65 + g), rows: [] });
     }
+    // Przypisz każdy wiersz do właściwej grupy wg seedingMap
+    const usedSeedingMap = seedingMap && Object.keys(seedingMap).length > 0;
+    rows.forEach(r => {
+      const teamId = r.team_id ?? r.id;
+      let gIdx = usedSeedingMap ? (seedingMap[teamId] ?? -1) : -1;
+      // Fallback: jeśli brak seedingu, rozdziel po kolei (stare zachowanie)
+      if (gIdx < 0 || gIdx >= groupsCount) {
+        // Znajdź pierwszą grupę z wolnym miejscem
+        gIdx = groups.findIndex(g => g.rows.length < teamsPerGroup);
+        if (gIdx < 0) gIdx = 0;
+      }
+      groups[gIdx].rows.push(r);
+    });
+    // Posortuj wewnątrz każdej grupy wg punktów (nie globalnie)
+    groups.forEach(g => {
+      g.rows.sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
+    });
+    // Usuń puste grupy (mogą się zdarzyć gdy seeding niepełny)
+    groups = groups.filter(g => g.rows.length > 0);
   } else {
     groups = [{ name: null, letter: 'A', rows }];
   }
@@ -340,7 +375,7 @@ function svBuildLeague({ fmt, standingsData, discipline }, containerEl) {
 
 // ── LOGIKA KOŃCA FAZY LIGOWEJ ─────────────────────────────────────────────────
 
-async function svEndLeague(discipline, fmt, standingsData) {
+async function svEndLeague(discipline, fmt, standingsData, seedingMap) {
   const ROUND_ORDER = ['1/16','1/8','1/4','Półfinał','Finał'];
 
   const groupsCount   = Math.max(1, fmt.groups_count   || 1);
@@ -358,11 +393,23 @@ async function svEndLeague(discipline, fmt, standingsData) {
   const totalPromoted      = firstRoundMatches * 2;
   const promotedPerGroup   = Math.ceil(totalPromoted / groupsCount);
 
-  // Podziel tabele na grupy
-  const groups = [];
-  for (let g = 0; g < groupsCount; g++) {
-    groups.push(rows.slice(g * teamsPerGroup, (g + 1) * teamsPerGroup));
-  }
+  // Podziel tabele na grupy — wg seedingMap (nie wg kolejności w tabeli globalnej!)
+  const rawGroups = Array.from({ length: groupsCount }, () => []);
+  const usedSeedingMap = seedingMap && Object.keys(seedingMap).length > 0;
+  rows.forEach(r => {
+    const teamId = r.team_id ?? r.id;
+    let gIdx = usedSeedingMap ? (seedingMap[teamId] ?? -1) : -1;
+    if (gIdx < 0 || gIdx >= groupsCount) {
+      // fallback: pierwsza niepełna grupa
+      gIdx = rawGroups.findIndex(g => g.length < teamsPerGroup);
+      if (gIdx < 0) gIdx = 0;
+    }
+    rawGroups[gIdx].push(r);
+  });
+  // Posortuj każdą grupę wg wyników
+  const groups = rawGroups.map(g =>
+    [...g].sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf)
+  );
 
   // Zbierz awansujących: [rank0][rank1]... z każdej grupy
   // promoted[rank][groupIndex] = team
@@ -761,48 +808,64 @@ function svBuildScorers(rows, discipline) {
   const isFootball   = discipline === "Piłka Nożna";
   const isBasketball = discipline === "Koszykówka";
 
-  const activeRows = rows.filter(r => r.total_points > 0);
-  if (!activeRows.length) {
-    return `<div class="sv-empty">Brak zdobytych ${isFootball ? "goli" : "punktów"} w rozegranych meczach.<br>Klasyfikacja pojawi się po uzupełnieniu protokołów.</div>`;
+  // Pokaż WSZYSTKICH zawodników — aktywni (z wynikami) na górze, reszta z zerami poniżej
+  const allRows    = Array.isArray(rows) ? rows : (rows?.data || []);
+  const activeRows = allRows.filter(r => (r.total_points > 0) || (r.goals > 0));
+  const zeroRows   = allRows.filter(r => (r.total_points <= 0) && (r.goals <= 0));
+
+  if (!allRows.length) {
+    return `<div class="sv-empty">Brak zawodników w tej dyscyplinie.</div>`;
   }
 
-  const maxPts = activeRows[0]?.total_points || 1;
+  const maxPts = activeRows[0]?.total_points || activeRows[0]?.goals || 1;
 
   const headerCols = isBasketball
     ? `<th class="sv-sc-num">M</th><th class="sv-sc-pts sv-sc-pts--main">Pkt</th><th class="sv-sc-sub" title="Rzuty wolne (1 pkt)">1pt</th><th class="sv-sc-sub" title="Rzuty za 2 punkty">2pt</th><th class="sv-sc-sub" title="Rzuty za 3 punkty">3pt</th><th class="sv-sc-sub" title="Faule osobiste">Faule</th>`
     : `<th class="sv-sc-num">M</th><th class="sv-sc-pts sv-sc-pts--main">Gole</th>${isFootball ? `<th class="sv-sc-sub" title="Żółte kartki">🟡</th><th class="sv-sc-sub" title="Czerwone kartki">🔴</th>` : ""}`;
 
-  const rowsHtml = activeRows.map((r, idx) => {
-    const pct = Math.round((r.total_points / maxPts) * 100);
-    const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `<span class="sv-sc-rank">${idx + 1}</span>`;
+  function buildScorerRow(r, idx, isZero) {
+    const score = isFootball ? (r.goals || 0) : (r.total_points || 0);
+    const pct   = isZero ? 0 : Math.round((score / maxPts) * 100);
+    const medal = isZero
+      ? `<span class="sv-sc-rank sv-sc-rank--zero">—</span>`
+      : idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉"
+        : `<span class="sv-sc-rank">${idx + 1}</span>`;
 
     const extraCols = isBasketball
-      ? `<td class="sv-sc-num">${r.matches_played}</td>
-         <td class="sv-sc-pts sv-sc-pts--main">${r.total_points}</td>
+      ? `<td class="sv-sc-num">${r.matches_played || 0}</td>
+         <td class="sv-sc-pts sv-sc-pts--main">${r.total_points || 0}</td>
          <td class="sv-sc-sub">${r.points_1pt || 0}</td>
          <td class="sv-sc-sub">${r.points_2pt || 0}</td>
          <td class="sv-sc-sub">${r.points_3pt || 0}</td>
          <td class="sv-sc-sub">${r.personal_fouls || 0}</td>`
-      : `<td class="sv-sc-num">${r.matches_played}</td>
-         <td class="sv-sc-pts sv-sc-pts--main">${r.total_points}</td>
+      : `<td class="sv-sc-num">${r.matches_played || 0}</td>
+         <td class="sv-sc-pts sv-sc-pts--main">${score}</td>
          ${isFootball ? `<td class="sv-sc-sub">${r.yellow_cards || 0}</td><td class="sv-sc-sub">${r.red_cards || 0}</td>` : ""}`;
 
     const avgPts = r.matches_played > 0
-      ? (r.total_points / r.matches_played).toFixed(1)
+      ? (score / r.matches_played).toFixed(1)
       : "—";
 
     return `
-      <tr class="sv-sc-row ${idx < 3 ? "sv-sc-row--top3" : ""}">
+      <tr class="sv-sc-row ${!isZero && idx < 3 ? "sv-sc-row--top3" : ""} ${isZero ? "sv-sc-row--zero" : ""}">
         <td class="sv-sc-medal">${medal}</td>
         <td class="sv-sc-player">
           <div class="sv-sc-name">${r.first_name} ${r.last_name}${r.is_captain ? ' <span class="sv-sc-captain" title="Kapitan">©</span>' : ''}</div>
           <div class="sv-sc-team">${r.team_name}${r.class_name ? ` · ${r.class_name}` : ""}</div>
-          <div class="sv-sc-bar-wrap"><div class="sv-sc-bar" style="width:${pct}%"></div></div>
+          ${!isZero ? `<div class="sv-sc-bar-wrap"><div class="sv-sc-bar" style="width:${pct}%"></div></div>` : ""}
         </td>
         ${extraCols}
         <td class="sv-sc-avg" title="${isFootball ? "Gole" : "Punkty"} na mecz">${avgPts}</td>
       </tr>`;
-  }).join("");
+  }
+
+  const rowsHtml = [
+    ...activeRows.map((r, idx) => buildScorerRow(r, idx, false)),
+    ...(zeroRows.length > 0
+      ? [`<tr class="sv-sc-divider"><td colspan="99"><span>— Bez ${isFootball ? "goli" : "punktów"} (${zeroRows.length}) —</span></td></tr>`,
+         ...zeroRows.map(r => buildScorerRow(r, -1, true))]
+      : []),
+  ].join("");
 
   const discipline_label = isFootball ? "⚽ Klasyfikacja strzelców" : "🏀 Klasyfikacja rzucających";
   const pts_label        = isFootball ? "Gole" : "Pkt";
@@ -812,7 +875,7 @@ function svBuildScorers(rows, discipline) {
     <div class="sv-scorers">
       <div class="sv-scorers-header">
         <h3 class="sv-scorers-title">${discipline_label}</h3>
-        <span class="sv-scorers-count">${activeRows.length} zawodnik${activeRows.length === 1 ? "" : activeRows.length < 5 ? "ów" : "ów"}</span>
+        <span class="sv-scorers-count">${allRows.length} zawodnik${allRows.length === 1 ? "" : allRows.length < 5 ? "ów" : "ów"}</span>
       </div>
       <div class="sv-scorers-table-wrap">
         <table class="sv-scorers-table">

@@ -5892,3 +5892,26 @@ details.rk-scheme-box[open] .rk-scheme-title { border-bottom: 1px solid var(--bo
   background: #ef4444; color: #fff;
 }
 .mz-delete-modal-btn--confirm:hover:not(:disabled) { background: #dc2626; }
+/* ── Klasyfikacja strzelców — sekcja zerowych ──────────────────────────── */
+.sv-sc-row--zero {
+  opacity: .55;
+}
+.sv-sc-row--zero:hover {
+  opacity: .75;
+}
+.sv-sc-rank--zero {
+  color: var(--muted);
+  font-size: .8rem;
+}
+.sv-sc-divider td {
+  text-align: center;
+  padding: .4rem .5rem;
+  font-size: .75rem;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2);
+}
+.sv-sc-divider span {
+  letter-spacing: .04em;
+}
