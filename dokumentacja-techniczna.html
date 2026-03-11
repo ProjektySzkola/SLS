@@ -945,6 +945,49 @@ code {
       <p><strong>NAPRAWIONE — CSS vs JS mismatch w klasyfikacji strzelców:</strong> Poprzedni CSS zawierał klasy <code>.sv-scorers-section</code>, <code>.sv-sc-rank-cell</code> itp., które nie istniały w HTML generowanym przez <code>svBuildScorers()</code>. CSS przepisany z prawdziwych klas: <code>.sv-sc-medal</code>, <code>.sv-sc-name</code>, <code>.sv-sc-pts--main</code>, <code>.sv-sc-bar-wrap</code> itd.</p>
     </div>
 
+    <div class="call call-fix">
+      <span class="call-ico">✅</span>
+      <p><strong>NAPRAWIONE — Drabinka pucharowa pusta przed wygenerowaniem meczów (admin-sport.js):</strong>
+      <code>svBuildBracket()</code> wyświetlała pustą drabinkę lub "TBD" we wszystkich slotach gdy mecze pucharowe jeszcze nie zostały wygenerowane. Drabinka pojawiała się dopiero po wygenerowaniu meczów.<br>
+      <strong>Przyczyna (1):</strong> <code>loadSportView()</code> pobierało seedy tylko dla ligi (<code>/seeding/.../liga</code>) — nie pobierało seedów pucharowych.<br>
+      <strong>Przyczyna (2):</strong> <code>svBuildBracket()</code> nie miała dostępu do seedów pucharowych i nie potrafiła wypełnić pierwszej rundy nazwami drużyn bez istniejących meczów.<br>
+      <strong>Poprawka:</strong> <code>loadSportView()</code> pobiera teraz dodatkowo <code>/seeding/.../puchar</code> i przekazuje <code>cupSeedingRaw</code> przez kontekst do <code>svBuildBracket()</code>. Funkcja <code>svBuildBracket()</code> dla pierwszej rundy bez meczu wypełnia nazwy drużyn z seedów pucharowych wg <code>position</code> zamiast "TBD".</p>
+    </div>
+
+    <table class="tbl" style="margin-top:1rem">
+      <caption style="text-align:left;padding:.5rem 0;font-size:.8rem;color:var(--muted)">
+        <strong style="color:var(--text)">Historia zmian</strong> — chronologiczna lista sesji naprawczych
+      </caption>
+      <thead><tr><th>Data</th><th>Plik</th><th>Zmiana</th></tr></thead>
+      <tbody>
+        <tr>
+          <td style="white-space:nowrap;color:var(--muted);font-size:.8rem">Sesja 1</td>
+          <td class="col-file">admin-globals.js</td>
+          <td class="col-note">Ujednolicenie <code>normFmt()</code> jako jedyne źródło prawdy (<code>window.normFmt</code>). Zastąpienie raw Supabase insertów w <code>svEndLeague()</code> przez <code>createMatch()</code>. Zastąpienie raw queries w <code>srSave()</code> przez <code>saveSeeding()</code> i <code>saveTournamentSettings()</code>.</td>
+        </tr>
+        <tr>
+          <td style="white-space:nowrap;color:var(--muted);font-size:.8rem">Sesja 2</td>
+          <td class="col-file">admin-planowanie.js</td>
+          <td class="col-note"><code>parseInt()</code> w <code>normSeed()</code>, <code>_matchKey()</code>, <code>matchExists()</code> — naprawa string vs number mismatch. Odświeżanie <code>_serverMatchKeys</code> w <code>openGenWizard()</code>. <code>normSeed()</code> w <code>computeCupPairs()</code> — naprawa "? vs ?" w podglądzie generatora.</td>
+        </tr>
+        <tr>
+          <td style="white-space:nowrap;color:var(--muted);font-size:.8rem">Sesja 2</td>
+          <td class="col-file">admin-rozstawienie.js</td>
+          <td class="col-note">Blokowanie zakładek Liga/Puchar wg <code>has_league</code>/<code>has_cup</code> w <code>srInitWorkspace()</code>. <code>parseInt()</code> przy ładowaniu seedów — naprawa duplikacji drużyny w slocie i puli.</td>
+        </tr>
+        <tr>
+          <td style="white-space:nowrap;color:var(--muted);font-size:.8rem">Sesja 2</td>
+          <td class="col-file">admin-globals.js</td>
+          <td class="col-note">Mapa PL→EN w <code>saveTournamentSettings()</code> — normalizacja wartości <code>połowy→halves</code>, <code>połowa→half</code>, <code>mecz→match</code>, <code>kwarty→quarters</code>.</td>
+        </tr>
+        <tr>
+          <td style="white-space:nowrap;color:var(--muted);font-size:.8rem">Sesja 3</td>
+          <td class="col-file">admin-sport.js</td>
+          <td class="col-note">Pobieranie seedów pucharowych w <code>loadSportView()</code>. Wypełnianie pierwszej rundy drabinki z seedów pucharowych w <code>svBuildBracket()</code> — drabinka teraz widoczna zawsze, nie tylko po wygenerowaniu meczów.</td>
+        </tr>
+      </tbody>
+    </table>
+
     <table class="tbl" style="margin-top:1rem">
       <thead><tr><th>Problem</th><th>Plik</th><th>Status</th><th>Opis</th></tr></thead>
       <tbody>

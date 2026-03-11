@@ -32,12 +32,15 @@ async function loadSportView(discipline) {
   badgesEl.innerHTML = "";
 
   // Pobierz format, tabelę i bracket równolegle
-  const [fmtAll, standingsData, bracketData, matchesData, seedingRaw] = await Promise.all([
+  // BUG-FIX: dodano pobieranie seedów pucharowych (cupSeedingRaw) — potrzebne do
+  // wypełnienia pierwszej rundy drabinki zanim mecze pucharowe zostaną wygenerowane
+  const [fmtAll, standingsData, bracketData, matchesData, seedingRaw, cupSeedingRaw] = await Promise.all([
     api('/tournament-format'),
     api(`/standings-custom/${encodeURIComponent(discipline)}`),
     api(`/bracket/${encodeURIComponent(discipline)}`),
     api(`/matches?discipline=${encodeURIComponent(discipline)}`),
     api(`/seeding/${encodeURIComponent(discipline)}/liga`),
+    api(`/seeding/${encodeURIComponent(discipline)}/puchar`),
   ]);
 
   const fmt = normFmt(fmtAll)[discipline] || {};
@@ -79,13 +82,13 @@ async function loadSportView(discipline) {
     btn.addEventListener("click", () => {
       tabsEl.querySelectorAll(".sv-tab").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
-      svShowTab(slug, btn.dataset.tab, { fmt, standingsData, bracketData, matchesData, discipline, seedingMap });
+      svShowTab(slug, btn.dataset.tab, { fmt, standingsData, bracketData, matchesData, discipline, seedingMap, cupSeedingRaw });
     });
   });
 
   // Pokaż pierwszą zakładkę
   const firstTab = tabs[0]?.id || "terminarz";
-  svShowTab(slug, firstTab, { fmt, standingsData, bracketData, matchesData, discipline, seedingMap });
+  svShowTab(slug, firstTab, { fmt, standingsData, bracketData, matchesData, discipline, seedingMap, cupSeedingRaw });
 }
 
 // ── Przełączanie zakładki ─────────────────────────────────────────────────────
@@ -471,7 +474,7 @@ async function svEndLeague(discipline, fmt, standingsData, seedingMap) {
 
 // ── DRABINKA PUCHAROWA — jquery.bracket ──────────────────────────────────────
 
-function svBuildBracket({ bracketData, fmt }, containerEl) {
+function svBuildBracket({ bracketData, fmt, cupSeedingRaw }, containerEl) {
   const ROUND_ORDER = ['1/16','1/8','1/4','Półfinał','Finał'];
 
   // ── 1. Ustal rundy ────────────────────────────────────────────────────────
@@ -492,6 +495,27 @@ function svBuildBracket({ bracketData, fmt }, containerEl) {
   // ── 2. Mapa meczów po rundzie ─────────────────────────────────────────────
   const matchesByRound = {};
   (bracketData || []).forEach(({ round, matches }) => { matchesByRound[round] = matches; });
+
+  // BUG-FIX: Zbuduj mapę seedów pucharowych posortowanych po position.
+  // Używana do wypełnienia pierwszej rundy drabinki gdy mecze jeszcze nie istnieją.
+  // Bez tego drabinka była pusta do czasu wygenerowania meczów.
+  const cupSeeds = Array.isArray(cupSeedingRaw)
+    ? [...cupSeedingRaw]
+        .filter(s => s.position >= 0)
+        .sort((a, b) => a.position - b.position)
+        .map(s => ({
+          id:         s.team_id ?? s.id,
+          team_name:  s.teams?.team_name ?? s.team_name ?? '?',
+          class_name: s.teams?.class_name ?? s.class_name ?? '',
+          position:   s.position,
+        }))
+    : [];
+
+  // Helper: nazwa drużyny z seedów dla danego slotu pierwszej rundy
+  const seedNameForSlot = (slotIdx) => {
+    const seed = cupSeeds[slotIdx];
+    return seed ? seed.team_name : null;
+  };
 
   const totalRounds = configuredRounds.length;
 
@@ -595,14 +619,19 @@ function svBuildBracket({ bracketData, fmt }, containerEl) {
       const t2win = w === 2;
       const hasPen = played && hasShootout(m);
 
-      // Nazwy drużyn — z meczu lub propagowane z poprzedniej rundy
+      // Nazwy drużyn — z meczu, propagowane z poprzedniej rundy, lub z seedów pucharowych
       let name1, name2;
       if (m) {
         name1 = m.team1_name;
         name2 = m.team2_name;
+      } else if (ri === 0) {
+        // BUG-FIX: Pierwsza runda bez meczu — wypełnij z seedów pucharowych.
+        // Wcześniej: zawsze "TBD". Teraz: nazwa drużyny z rozstawienia pucharowego.
+        name1 = seedNameForSlot(si * 2)     || 'TBD';
+        name2 = seedNameForSlot(si * 2 + 1) || 'TBD';
       } else {
-        name1 = (ri > 0 ? propagated[ri - 1][si * 2]     : null) || 'TBD';
-        name2 = (ri > 0 ? propagated[ri - 1][si * 2 + 1] : null) || 'TBD';
+        name1 = (propagated[ri - 1][si * 2])     || 'TBD';
+        name2 = (propagated[ri - 1][si * 2 + 1]) || 'TBD';
       }
 
       const isTbd = !m;
