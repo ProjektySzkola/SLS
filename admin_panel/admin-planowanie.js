@@ -1,8 +1,7 @@
 /* normFmt() zdefiniowane globalnie w admin-globals.js */
 /* ── normSeed: spłaszcza rekord seeding (join z teams) ───────────────── */
 function normSeed(s) {
-  // BUG-FIX: id musi być zawsze liczbą całkowitą — parseInt() zapobiega błędom
-  // porównania string vs number w matchExists() i _matchKey()
+  // BUG-FIX: parseInt() zapobiega błędom porównania string vs number w matchExists()
   const rawId = s.team_id ?? s.id;
   return {
     ...s,
@@ -367,9 +366,9 @@ async function openGenWizard() {
   ]);
   _genFmt = normFmt(fmtAll);
 
-  // BUG-FIX: Przebuduj _serverMatchKeys ze świeżych danych bazy —
-  // bez tego matchExists() nie wykrywa meczów zapisanych w poprzedniej sesji
-  // ani po zmianie rozstawienia, co powoduje generowanie duplikatów.
+  // BUG-FIX: Przebuduj _serverMatchKeys ze świeżych danych bazy przy każdym otwarciu
+  // wizarda — bez tego matchExists() nie wykrywa meczów z poprzednich sesji
+  // i generator oferuje już istniejące mecze jako "+X nowych"
   _serverMatchKeys.clear();
   (freshMatches || []).forEach(m => {
     _serverMatchKeys.add(_matchKey(m.discipline, m.match_type || "liga", m.team1_id, m.team2_id));
@@ -729,7 +728,13 @@ function computeLeaguePairs(disc, fmt, seeds) {
 
 /* ── Oblicz pary pucharowe (do podglądu) ────────────────────────────────── */
 function computeCupPairs(disc, fmt) {
-  const directSeeds = (_genSeeds[disc+"_puchar"] || []).filter(s => s.position >= 0).sort((a,b)=>a.position-b.position);
+  // BUG-FIX: normSeed() wymagane — bez tego t.team_name jest undefined bo Supabase
+  // zwraca nazwę zagnieżdżoną w t.teams.team_name; buildGenWizardHtml szuka p.t1?.team_name
+  // co dawało "? vs ?" dla każdego pucharu z bezpośrednim rozstawieniem
+  const directSeeds = (_genSeeds[disc+"_puchar"] || [])
+    .filter(s => s.position >= 0)
+    .map(normSeed)
+    .sort((a,b) => a.position - b.position);
   if (directSeeds.length >= 2) {
     const pairs = [];
     for (let i = 0; i < directSeeds.length - 1; i += 2)
@@ -1092,8 +1097,8 @@ function buildCupPairsFromGroups(groupMap, numGroups, advance, groupLabels) {
 const _serverMatchKeys = new Set();
 
 function _matchKey(disc, type, id1, id2) {
-  // BUG-FIX: parseInt() zapewnia że klucze są zawsze liczbowe,
-  // bez względu czy id pochodzi z bazy (string) czy z JS (number)
+  // BUG-FIX: parseInt() zapewnia że klucze są zawsze liczbowe niezależnie
+  // czy id pochodzi z bazy (string) czy z JS (number)
   const n1 = parseInt(id1, 10);
   const n2 = parseInt(id2, 10);
   const [a, b] = n1 < n2 ? [n1, n2] : [n2, n1];
@@ -1101,7 +1106,7 @@ function _matchKey(disc, type, id1, id2) {
 }
 
 function matchExists(disc, type, id1, id2) {
-  // BUG-FIX: parseInt() zapewnia spójność typów przy porównywaniu ID
+  // BUG-FIX: parseInt() zapewnia spójność typów — Supabase może zwracać ID jako string
   const n1 = parseInt(id1, 10);
   const n2 = parseInt(id2, 10);
   // Sprawdź lokalny cache JS

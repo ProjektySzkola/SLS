@@ -202,6 +202,50 @@ async function srInitWorkspace() {
   srFmt = fmtAll?.[srDisc] || {};
   srAllTeams = teamsRaw || [];
 
+  // BUG-FIX: Zarządzaj dostępnością zakładek Liga/Puchar na podstawie formatu
+  const hasLeague = !!srFmt.has_league;
+  const hasCup    = !!srFmt.has_cup;
+
+  const ligaTab = document.querySelector(".sr-type-tab[data-type='liga']");
+  const cupTab  = document.querySelector(".sr-type-tab[data-type='puchar']");
+  const cupHint = $("sr-cup-hint");
+
+  // Zakładka Puchar
+  if (cupTab) {
+    cupTab.disabled = !hasCup;
+    cupTab.classList.toggle("sr-tab--disabled", !hasCup);
+  }
+  if (cupHint) cupHint.classList.toggle("hidden", hasCup);
+
+  // Zakładka Liga — hint tworzony dynamicznie jeśli nie ma go w HTML
+  let ligaHint = $("sr-liga-hint");
+  if (!ligaHint && cupHint?.parentNode) {
+    ligaHint = document.createElement("span");
+    ligaHint.id = "sr-liga-hint";
+    ligaHint.className = "sr-format-hint hidden";
+    ligaHint.title = "Liga nie jest aktywna dla tej dyscypliny w ustawieniach turnieju";
+    ligaHint.textContent = "🔒 Liga wyłączona";
+    cupHint.parentNode.insertBefore(ligaHint, cupHint);
+  }
+  if (ligaTab) {
+    ligaTab.disabled = !hasLeague;
+    ligaTab.classList.toggle("sr-tab--disabled", !hasLeague);
+  }
+  if (ligaHint) ligaHint.classList.toggle("hidden", hasLeague);
+
+  // Jeśli aktualny typ jest niedostępny — przełącz automatycznie na dostępny
+  if (srType === "liga" && !hasLeague && hasCup) {
+    srType = "puchar";
+    document.querySelectorAll(".sr-type-tab").forEach(b =>
+      b.classList.toggle("active", b.dataset.type === "puchar")
+    );
+  } else if (srType === "puchar" && !hasCup && hasLeague) {
+    srType = "liga";
+    document.querySelectorAll(".sr-type-tab").forEach(b =>
+      b.classList.toggle("active", b.dataset.type === "liga")
+    );
+  }
+
   // liga — z formatu
   srGroups    = srFmt.groups_count    || 2;
   srTeamsPerG = srFmt.teams_per_group || 4;
@@ -217,7 +261,7 @@ async function srInitWorkspace() {
   if (seedRaw?.length) {
     seedRaw.filter(t => t.position >= 0 && t.position < srSlots.length).forEach(t => {
       // BUG-FIX: parseInt() zapobiega duplikacji drużyny w slocie i puli
-      // gdy team_id z Supabase jest stringiem a teams[].id liczbą
+      // gdy team_id z Supabase jest stringiem a teams[].id jest liczbą
       srSlots[t.position].team = {
         id:         parseInt(t.team_id ?? t.id, 10),
         team_name:  t.teams?.team_name  ?? t.team_name,

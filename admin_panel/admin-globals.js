@@ -1124,9 +1124,26 @@ async function saveTournamentSettings(body) {
       'volleyball_substitutions_limit', 'volleyball_substitutions_per',
       'volleyball_timeouts_limit', 'volleyball_timeouts_per',
     ];
+
+    // BUG-FIX: Normalizuj polskie wartości → angielskie przed zapisem do bazy.
+    // Część wartości _per i basketball_periods była zapisywana po polsku
+    // (połowy/mecz/połowa/kwarty) zamiast angielskich (halves/match/half/quarters),
+    // co powodowało niespójność gdy protokoły JS porównują wartości z angielskimi stringami.
+    const PL_TO_EN = {
+      'połowy':  'halves',
+      'połowa':  'half',
+      'mecz':    'match',
+      'kwarty':  'quarters',
+      'kwarta':  'quarter',
+    };
+    const normalizeValue = v => {
+      const s = String(v ?? '');
+      return PL_TO_EN[s.toLowerCase().trim()] ?? s;
+    };
+
     const rows = Object.entries(body)
       .filter(([k]) => ALLOWED.includes(k))
-      .map(([k, v]) => ({ key: k, value: String(v ?? '') }));
+      .map(([k, v]) => ({ key: k, value: normalizeValue(v) }));
 
     if (!rows.length) return { error: 'Brak dozwolonych pól' };
     const { error } = await supabase.from('tournament_settings')

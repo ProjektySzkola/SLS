@@ -906,23 +906,38 @@ code {
 
     <div class="call call-fix">
       <span class="call-ico">✅</span>
-      <p><strong>NAPRAWIONE — showAddPlayerModal() boolean bug:</strong> Pola <code>is_captain</code>, <code>rodo_consent</code>, <code>participation_consent</code> były wstawiane jako <code>1/0</code> (integer) zamiast <code>true/false</code> (PostgreSQL boolean). Przepisane na <code>createPlayer()</code>.</p>
-    </div>
-
-    <div class="call call-fix">
-      <span class="call-ico">✅</span>
       <p><strong>NAPRAWIONE — string vs number mismatch w matchExists() / _matchKey() / normSeed():</strong>
-      Supabase zwracał <code>team_id</code> i <code>id</code> z bazy jako stringi w niektórych kontekstach (np. po join z tabelą <code>seeding</code>), podczas gdy lokalne obiekty drużyn używały typów numerycznych.
-      Skutki: (1) <code>_matchKey()</code> budował klucze np. <code>"Piłka Nożna|liga|NaN|5"</code> gdy id było <code>undefined</code>, (2) <code>matchExists()</code> nie wykrywało istniejących meczów przy porównaniu string <code>"3"</code> vs number <code>3</code>, (3) drużyna pojawiała się jednocześnie w slocie rozstawienia i w puli.
+      Supabase zwracał <code>team_id</code> i <code>id</code> z tabeli <code>seeding</code> jako stringi w niektórych kontekstach, podczas gdy lokalne obiekty drużyn używały typów numerycznych. Skutki: (1) <code>_matchKey()</code> budował klucze z <code>NaN</code> gdy id było <code>undefined</code>, (2) <code>matchExists()</code> nie wykrywało istniejących meczów przy porównaniu <code>"3" === 3</code>, (3) drużyna pojawiała się jednocześnie w slocie i w puli.
       <strong>Poprawka:</strong> <code>parseInt(..., 10)</code> dodane w <code>normSeed()</code>, <code>_matchKey()</code>, <code>matchExists()</code> (<code>admin-planowanie.js</code>) oraz w <code>srInitWorkspace()</code> (<code>admin-rozstawienie.js</code>).</p>
     </div>
 
     <div class="call call-fix">
       <span class="call-ico">✅</span>
       <p><strong>NAPRAWIONE — brak synchronizacji _serverMatchKeys w openGenWizard():</strong>
-      Przy każdym otwarciu generatora meczy <code>_serverMatchKeys</code> (zbiór kluczy meczów pobranych z bazy) nie był aktualizowany — zawierał tylko dane z momentu inicjalizacji planera.
-      Skutki: po zapisaniu rozstawienia i otwarciu generatora, <code>matchExists()</code> nie wykrywał meczów utworzonych w poprzednich sesjach → generator oferował już istniejące mecze jako „nowe" lub pokazywał niepoprawną liczbę „+X nowych".
-      <strong>Poprawka:</strong> <code>openGenWizard()</code> pobiera teraz <code>/matches</code> równolegle z formatem i przebudowuje <code>_serverMatchKeys</code> ze świeżych danych bazy przed wyświetleniem podglądu (<code>admin-planowanie.js</code>).</p>
+      Przy każdym otwarciu generatora meczy <code>_serverMatchKeys</code> nie był aktualizowany ze świeżych danych bazy — zawierał tylko dane z momentu inicjalizacji planera. Generator oferował już istniejące mecze jako „+X nowych".
+      <strong>Poprawka:</strong> <code>openGenWizard()</code> pobiera teraz <code>/matches</code> równolegle i przebudowuje <code>_serverMatchKeys</code> przed wyświetleniem podglądu (<code>admin-planowanie.js</code>).</p>
+    </div>
+
+    <div class="call call-fix">
+      <span class="call-ico">✅</span>
+      <p><strong>NAPRAWIONE — computeCupPairs() pokazuje "? vs ?" dla każdego pucharu:</strong>
+      <code>computeCupPairs()</code> (funkcja podglądu w wizardzie generatora) pobierało <code>directSeeds</code> bez <code>normSeed()</code>, więc <code>team_name</code> było zagnieżdżone w <code>t.teams.team_name</code>, a HTML szukał <code>p.t1?.team_name</code> na poziomie głównym → <code>undefined</code> → "?".
+      Dotyczyło WSZYSTKICH dyscyplin z bezpośrednim rozstawieniem pucharowym (<code>type='puchar'</code>).
+      <strong>Poprawka:</strong> dodano <code>.map(normSeed)</code> w <code>computeCupPairs()</code> (<code>admin-planowanie.js</code>). Uwaga: <code>generateCupMatches()</code> miało już poprawnie <code>normSeed</code> — problem był tylko w funkcji podglądu.</p>
+    </div>
+
+    <div class="call call-fix">
+      <span class="call-ico">✅</span>
+      <p><strong>NAPRAWIONE — srInitWorkspace() ignoruje has_league / has_cup:</strong>
+      Zakładki "Liga" i "Puchar" w sekcji Rozstawienie były zawsze aktywne. Gdy Piłka Nożna miała <code>has_league=false</code>, zakładka "Liga" była dostępna i ładowała pustą strukturę.
+      <strong>Poprawka:</strong> <code>srInitWorkspace()</code> po załadowaniu formatu blokuje (<code>disabled</code>) niedostępne zakładki, tworzy dynamicznie hint "Liga wyłączona" i automatycznie przełącza na dostępny typ (<code>admin-rozstawienie.js</code>).</p>
+    </div>
+
+    <div class="call call-fix">
+      <span class="call-ico">✅</span>
+      <p><strong>NAPRAWIONE — polskie wartości w tournament_settings:</strong>
+      Wartości pól <code>*_per</code> i <code>basketball_periods</code> były zapisywane po polsku: <code>"połowy"</code>, <code>"mecz"</code>, <code>"połowa"</code>, <code>"kwarty"</code>. Pliki protokołów (football.html, basketball.html, volleyball.html) porównują te wartości z angielskimi stringami.
+      <strong>Poprawka:</strong> <code>saveTournamentSettings()</code> stosuje mapę normalizacji PL→EN przed każdym <code>upsert</code> do Supabase (<code>admin-globals.js</code>). <strong>Wymagana jednorazowa migracja SQL</strong> dla istniejących danych w bazie — patrz tabela niżej.</p>
     </div>
 
     <div class="call call-fix">
@@ -934,7 +949,24 @@ code {
       <thead><tr><th>Problem</th><th>Plik</th><th>Status</th><th>Opis</th></tr></thead>
       <tbody>
         <tr>
-          <td>saveTeam() raw supabase</td>
+          <td>Migracja tournament_settings — polskie wartości w bazie</td>
+          <td class="col-file">Supabase SQL Editor</td>
+          <td style="color:var(--gold)">⚠ jednorazowa akcja</td>
+          <td class="col-note">Istniejące rekordy wymagają migracji. Wykonaj w Supabase → SQL Editor:
+            <code style="display:block;margin-top:.4rem;font-size:.73rem;background:var(--bg3);padding:.4rem .6rem;border-radius:4px;line-height:1.7">
+UPDATE tournament_settings SET value='halves'   WHERE value='połowy';<br>
+UPDATE tournament_settings SET value='half'     WHERE value='połowa';<br>
+UPDATE tournament_settings SET value='match'    WHERE value='mecz';<br>
+UPDATE tournament_settings SET value='quarters' WHERE value='kwarty';
+            </code>
+          </td>
+        </tr>
+        <tr>
+          <td>Pliki protokołów nie dostarczone do analizy</td>
+          <td class="col-file">protokoly/football.html, basketball.html, volleyball.html</td>
+          <td style="color:var(--gold)">⚠ do weryfikacji</td>
+          <td class="col-note">Pliki protokołów nie były dostarczone. Normalizacja PL→EN w <code>saveTournamentSettings()</code> zapobiega nowym błędom, ale miejsca porównań <code>basketball_periods</code> / <code>*_per</code> z angielskimi stringami są prawdopodobnie w tych plikach i wymagają niezależnej weryfikacji.</td>
+        </tr>
           <td class="col-file">admin-druzyny.js</td>
           <td style="color:var(--gold)">⚠ znany</td>
           <td class="col-note">Używa bezpośrednio <code>supabase.from('teams').update()</code> zamiast <code>updateTeam()</code>. Działa poprawnie — niespójność architektoniczna, nie bug.</td>
