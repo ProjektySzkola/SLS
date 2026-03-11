@@ -1872,8 +1872,18 @@ async function openNextCupRoundModal() {
   modal.id = "pl-next-cup-backdrop";
   modal.className = "pl-gen-backdrop";
 
+  // Kolejność rund pucharowych (musi być spójna z svEndLeague i admin-sport.js)
+  const CUP_ROUND_ORDER = ['1/16','1/8','1/4','Półfinał','Finał'];
+  function parseCupRounds(raw) {
+    const arr = Array.isArray(raw) ? raw : (typeof raw === 'string' ? JSON.parse(raw || '[]') : []);
+    return [...arr].sort((a, b) => {
+      const ai = CUP_ROUND_ORDER.indexOf(a); const bi = CUP_ROUND_ORDER.indexOf(b);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
+  }
+
   const discOptions = eligible.map(f => {
-    const cupRounds = Array.isArray(f.cup_rounds) ? f.cup_rounds : JSON.parse(f.cup_rounds || "[]");
+    const cupRounds = parseCupRounds(f.cup_rounds);
     const roundOpts = cupRounds.map((r, i) => `<option value="${i}">${r}</option>`).join("");
     const firstReadiness = cupRounds[0] ? buildRoundReadiness(f.discipline, cupRounds[0]) : { html: "", ready: false };
     return `
@@ -1923,7 +1933,7 @@ async function openNextCupRoundModal() {
   modal.querySelectorAll(".pl-nc-from").forEach(sel => {
     sel.addEventListener("change", () => {
       const disc      = sel.dataset.disc;
-      const rounds    = JSON.parse(sel.dataset.rounds || "[]");
+      const rounds    = parseCupRounds(JSON.parse(sel.dataset.rounds || "[]"));
       const toSel     = modal.querySelector(`.pl-nc-to[data-disc="${disc}"]`);
       const genBtn    = modal.querySelector(`.pl-nc-gen-btn[data-disc="${disc}"]`);
       const readEl    = modal.querySelector(`.pl-nc-readiness[data-disc="${disc}"]`);
