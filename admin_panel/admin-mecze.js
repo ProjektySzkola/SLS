@@ -24,9 +24,7 @@ function mzToast(msg, type = "ok") {
   t._to = setTimeout(() => t.classList.add("hidden"), 3000);
 }
 
-function hasShootout(m) {
-  return m.shootout_t1 != null && m.shootout_t2 != null;
-}
+// hasShootout() jest zdefiniowane globalnie w admin-globals.js
 
 function mzFmtDate(d) {
   if (!d) return "—";

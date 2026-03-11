@@ -57,9 +57,9 @@
         <span class="nav-icon">📋</span>
         <span class="nav-label">Protokoły</span>
       </button>
-      <button class="nav-btn" data-view="rozstawienie">
-        <span class="nav-icon">🎲</span>
-        <span class="nav-label">Rozstawienie</span>
+      <button class="nav-btn" data-view="rozgrywki">
+        <span class="nav-icon">📅</span>
+        <span class="nav-label">Planowanie</span>
       </button>
 
       <div class="nav-section-label">⚙️ Administracja</div>
@@ -71,9 +71,9 @@
         <span class="nav-icon">🏅</span>
         <span class="nav-label">Drużyny</span>
       </button>
-      <button class="nav-btn" data-view="rozgrywki">
-        <span class="nav-icon">📅</span>
-        <span class="nav-label">Planowanie</span>
+      <button class="nav-btn" data-view="rozstawienie">
+        <span class="nav-icon">🎲</span>
+        <span class="nav-label">Rozstawienie</span>
       </button>
       <button class="nav-btn" data-view="sedziowie">
         <span class="nav-icon">⚖️</span>
@@ -258,8 +258,9 @@
           <span class="sr-topbar-label">Rodzaj</span>
           <div class="sr-type-tabs" id="sr-type-tabs">
             <button class="sr-type-tab active" data-type="liga">📊 Liga</button>
-            <button class="sr-type-tab" data-type="puchar">🏆 Puchar</button>
+            <button class="sr-type-tab" data-type="puchar" id="sr-cup-tab">🏆 Puchar</button>
           </div>
+          <span class="sr-format-hint hidden" id="sr-cup-hint" title="Puchar nie jest aktywny dla tej dyscypliny w ustawieniach turnieju">🔒 Puchar wyłączony</span>
         </div>
         <div class="sr-topbar-section sr-topbar-section--actions">
           <button class="sr-btn sr-btn--lock" id="sr-lock-btn" title="Zablokuj ustawienia">🔓 Odblokowane</button>

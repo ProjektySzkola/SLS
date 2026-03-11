@@ -16,7 +16,7 @@ function navigate(viewName) {
     dashboard:          () => loadDashboard(),
     druzyny:            () => loadAdminTeams(),
     turniej:            () => loadTurniej(),
-    rozstawienie:       () => loadRozstawienie(),
+    rozstawienie:       () => { loadRozstawienie(); srApplyFormatConstraints(); },
     rozgrywki:          () => loadPlanowanie(),
     sedziowie:          () => loadSedziowie(),
     mecze:              () => loadMecze(),
@@ -87,6 +87,72 @@ async function navigateToMatch(matchId) {
     const card = document.querySelector(`.mz-match-card[data-id="${matchId}"]`);
     if (card) card.scrollIntoView({ behavior: "smooth", block: "center" });
   });
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   ROZSTAWIENIE — ograniczenia formatu turnieju
+   Blokuje zakładkę "Puchar" gdy dyscyplina nie ma pucharu wg ustawień.
+════════════════════════════════════════════════════════════════════════════ */
+let _srFmtCache = null; // cache formatu aby nie pobierać wielokrotnie
+
+async function srApplyFormatConstraints() {
+  // Załaduj format jeśli jeszcze nie w cache
+  if (!_srFmtCache) {
+    _srFmtCache = await api("/tournament-format");
+  }
+  const fmtList = _srFmtCache;
+  if (!fmtList) return;
+
+  // Zbuduj mapę disc → format
+  const fmtMap = {};
+  if (Array.isArray(fmtList)) {
+    fmtList.forEach(f => { if (f.discipline) fmtMap[f.discipline] = f; });
+  } else if (typeof fmtList === "object") {
+    Object.assign(fmtMap, fmtList);
+  }
+
+  function applyConstraintForDisc(disc) {
+    const fmt    = fmtMap[disc] || {};
+    const hasCup = !!(fmt.has_cup);
+    const cupTab  = $("sr-cup-tab");
+    const cupHint = $("sr-cup-hint");
+    const ligatab = document.querySelector('.sr-type-tab[data-type="liga"]');
+
+    if (!cupTab) return;
+
+    if (!hasCup) {
+      // Puchar wyłączony — zablokuj przycisk i przełącz na ligę
+      cupTab.disabled = true;
+      cupTab.classList.add("sr-type-tab--disabled");
+      cupHint?.classList.remove("hidden");
+      // Jeśli aktualnie wybrana zakładka to puchar — przełącz na ligę
+      if (cupTab.classList.contains("active")) {
+        cupTab.classList.remove("active");
+        ligatab?.classList.add("active");
+        ligatab?.click();
+      }
+    } else {
+      // Puchar aktywny — odblokuj
+      cupTab.disabled = false;
+      cupTab.classList.remove("sr-type-tab--disabled");
+      cupHint?.classList.add("hidden");
+    }
+  }
+
+  // Zastosuj dla aktualnie wybranej dyscypliny
+  const activeDiscTab = document.querySelector(".sr-disc-tab.active");
+  const currentDisc   = activeDiscTab?.dataset.disc || "Piłka Nożna";
+  applyConstraintForDisc(currentDisc);
+
+  // Nasłuchuj zmiany dyscypliny — podepnij event delegation na kontenerze
+  const discTabs = $("sr-disc-tabs");
+  if (discTabs && !discTabs._fmtListenerAdded) {
+    discTabs._fmtListenerAdded = true;
+    discTabs.addEventListener("click", e => {
+      const tab = e.target.closest(".sr-disc-tab");
+      if (tab) applyConstraintForDisc(tab.dataset.disc);
+    });
+  }
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
