@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel Turnieju — Tutorial</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0d0f1a; --bg2: #141724; --bg3: #1c2035; --bg4: #222640;
+  --border: #252a42; --text: #e0e4f3; --muted: #6b7499;
+  --accent: #6c63ff; --green: #22c55e; --orange: #fb923c;
+  --violet: #a78bfa; --gold: #f59e0b; --red: #ef4444;
+  --r: 12px;
+}
+html { scroll-behavior: smooth; }
+body { font-family: 'Syne', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; font-size: 15px; }
+
+/* ─── HERO ─── */
+.hero {
+  background: linear-gradient(160deg, #0d0f1a 0%, #0f1230 55%, #0d1a14 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 4rem 2rem 3.5rem;
+  text-align: center;
+  position: relative; overflow: hidden;
+}
+.hero::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse 70% 50% at 50% -10%, rgba(108,99,255,.2), transparent);
+  pointer-events: none;
+}
+.hero-tag {
+  font-family: 'JetBrains Mono', monospace; font-size: .65rem;
+  letter-spacing: .18em; text-transform: uppercase;
+  color: var(--accent); margin-bottom: .9rem; display: block;
+}
+.hero h1 {
+  font-size: clamp(2rem, 5vw, 3.4rem); font-weight: 800;
+  letter-spacing: -.03em; line-height: 1.08; margin-bottom: 1rem;
+}
+.hero h1 em { font-style: normal; color: var(--accent); }
+.hero-sub { color: var(--muted); max-width: 520px; margin: 0 auto 2.2rem; font-size: .95rem; }
+.breadcrumb {
+  display: flex; justify-content: center; align-items: center;
+  flex-wrap: wrap; gap: .35rem; font-size: .75rem;
+}
+.bc-item {
+  display: flex; align-items: center; gap: .3rem;
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 9999px; padding: .25rem .7rem;
+  color: var(--muted); text-decoration: none; transition: all .18s;
+}
+.bc-item:hover { border-color: var(--accent); color: var(--text); background: rgba(108,99,255,.1); }
+.bc-item .n {
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .6rem; font-weight: 800; flex-shrink: 0;
+}
+.bc-sep { color: var(--border); font-size: .7rem; }
+
+/* ─── CONTAINER ─── */
+.wrap { max-width: 1020px; margin: 0 auto; padding: 0 1.5rem; }
+
+/* ─── FULL FLOW ─── */
+.flow-bar {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: .3rem; padding: 1.25rem 1.5rem;
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--r); margin: 2rem 0 1rem;
+}
+.fl { display: flex; align-items: center; gap: .4rem;
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 8px; padding: .3rem .7rem; font-size: .78rem; white-space: nowrap; }
+.fl .i { font-size: .85rem; }
+.fl-arrow { color: var(--muted); font-size: .9rem; flex-shrink: 0; }
+
+/* ─── SECTION ─── */
+.sec { padding: 2.5rem 0 .5rem; }
+.sec-head {
+  display: flex; align-items: flex-start; gap: 1rem;
+  padding-bottom: 1rem; margin-bottom: 1.75rem;
+  border-bottom: 1px solid var(--border);
+}
+.step-badge {
+  width: 42px; height: 42px; border-radius: 11px;
+  background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.05rem; font-weight: 800; flex-shrink: 0;
+  box-shadow: 0 0 22px rgba(108,99,255,.35);
+}
+.step-badge.dim { background: var(--bg3); border: 1.5px solid var(--border); font-size: .9rem; box-shadow: none; }
+.sec-title { font-size: 1.4rem; font-weight: 800; letter-spacing: -.02em; }
+.sec-where { font-size: .78rem; color: var(--muted); margin-top: .2rem; }
+.sec-when { margin-left: auto; font-size: .75rem; color: var(--muted);
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 6px; padding: .25rem .6rem; white-space: nowrap; align-self: center; flex-shrink: 0; }
+
+/* ─── CARDS ─── */
+.cards { display: grid; gap: .9rem; margin-bottom: 1.4rem; }
+.cards-2 { grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); }
+.cards-3 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 1.2rem 1.4rem;
+  position: relative; overflow: hidden;
+  transition: border-color .2s, transform .2s;
+}
+.card:hover { border-color: rgba(108,99,255,.35); transform: translateY(-1px); }
+.card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0;
+  height: 2px; background: var(--c, var(--accent));
+}
+.card-ico { font-size: 1.5rem; margin-bottom: .55rem; }
+.card h3 { font-size: .9rem; font-weight: 700; margin-bottom: .3rem; }
+.card p { font-size: .8rem; color: var(--muted); line-height: 1.55; }
+
+/* ─── STEPS ─── */
+.steps { display: flex; flex-direction: column; gap: .6rem; }
+.step { display: grid; grid-template-columns: 30px 1fr; gap: .9rem; align-items: start; }
+.step-n {
+  width: 30px; height: 30px; border-radius: 7px;
+  background: var(--bg3); border: 1.5px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: .7rem; font-weight: 700; color: var(--accent);
+  font-family: 'JetBrains Mono', monospace; flex-shrink: 0;
+}
+.step-b { padding-top: .15rem; }
+.step-b strong { display: block; font-size: .9rem; font-weight: 700; margin-bottom: .15rem; }
+.step-b span { font-size: .8rem; color: var(--muted); line-height: 1.5; }
+
+/* ─── INLINE BADGES ─── */
+.tag {
+  display: inline-flex; align-items: center; gap: .25rem;
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 5px; padding: .1rem .45rem;
+  font-size: .74rem; font-family: 'JetBrains Mono', monospace;
+  color: var(--text); white-space: nowrap; vertical-align: middle;
+}
+.tag-a { background: rgba(108,99,255,.15); border-color: rgba(108,99,255,.35); color: var(--accent); }
+.tag-g { background: rgba(34,197,94,.12);  border-color: rgba(34,197,94,.3);   color: var(--green); }
+.tag-o { background: rgba(251,146,60,.12); border-color: rgba(251,146,60,.3);  color: var(--orange); }
+.tag-r { background: rgba(239,68,68,.12);  border-color: rgba(239,68,68,.3);   color: var(--red); }
+
+/* ─── CALLOUTS ─── */
+.call {
+  display: flex; gap: .7rem; padding: .85rem 1.1rem;
+  border-radius: 8px; font-size: .82rem; line-height: 1.55;
+  margin: .7rem 0;
+}
+.call-tip  { background: rgba(108,99,255,.07); border: 1px solid rgba(108,99,255,.22); }
+.call-warn { background: rgba(245,158,11,.07); border: 1px solid rgba(245,158,11,.22); }
+.call-ok   { background: rgba(34,197,94,.06);  border: 1px solid rgba(34,197,94,.2);   }
+.call-ico  { font-size: .95rem; flex-shrink: 0; margin-top: .05rem; }
+.call p    { color: var(--text); }
+.call strong { font-weight: 700; }
+
+/* ─── TABLE ─── */
+.tbl { width: 100%; border-collapse: collapse; font-size: .8rem; margin: 1rem 0; }
+.tbl th {
+  padding: .45rem .7rem; text-align: left;
+  font-size: .67rem; font-weight: 700; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--muted);
+  background: var(--bg3); border-bottom: 1px solid var(--border);
+}
+.tbl td { padding: .5rem .7rem; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: top; }
+.tbl tr:last-child td { border-bottom: none; }
+.tbl tr:hover td { background: rgba(255,255,255,.018); }
+.tbl td:first-child { font-weight: 600; white-space: nowrap; color: var(--text); }
+.tbl td:last-child  { color: var(--muted); }
+
+/* ─── DISC TAGS ─── */
+.d-fn { background: rgba(34,197,94,.13); color: #22c55e; border-radius: 5px; padding: .1rem .45rem; font-size: .77rem; font-weight: 600; }
+.d-ko { background: rgba(251,146,60,.13); color: #fb923c; border-radius: 5px; padding: .1rem .45rem; font-size: .77rem; font-weight: 600; }
+.d-sv { background: rgba(167,139,250,.13); color: #a78bfa; border-radius: 5px; padding: .1rem .45rem; font-size: .77rem; font-weight: 600; }
+
+/* ─── TIMELINE ─── */
+.timeline { position: relative; padding-left: 2rem; }
+.timeline::before {
+  content: ''; position: absolute;
+  left: 9px; top: 8px; bottom: 8px; width: 2px;
+  background: linear-gradient(to bottom, var(--accent), rgba(108,99,255,.1));
+}
+.tl-item { position: relative; margin-bottom: 1.4rem; }
+.tl-item::before {
+  content: ''; position: absolute;
+  left: -1.65rem; top: 7px;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--accent); border: 2px solid var(--bg);
+  box-shadow: 0 0 8px rgba(108,99,255,.45);
+}
+.tl-item h4 { font-size: .9rem; font-weight: 700; margin-bottom: .2rem; }
+.tl-item p  { font-size: .8rem; color: var(--muted); line-height: 1.5; }
+
+/* ─── FORMULA BOX ─── */
+.formula {
+  display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
+  padding: 1rem 1.4rem; background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--r); margin: 1rem 0; font-family: 'JetBrains Mono', monospace;
+}
+.f-var { font-size: 1.1rem; font-weight: 700; }
+.f-pb { color: var(--violet); } .f-wf { color: var(--orange); } .f-wd { color: var(--green); }
+.f-total { color: var(--gold); font-size: 1.15rem; }
+.f-op { color: var(--muted); }
+.f-legend { width: 100%; display: flex; gap: 1.5rem; flex-wrap: wrap; font-size: .75rem; margin-top: .3rem; }
+.f-legend span { color: var(--muted); }
+
+/* ─── DIVIDER ─── */
+hr { border: none; border-top: 1px solid var(--border); margin: .5rem 0; }
+
+/* ─── FOOTER ─── */
+.footer {
+  margin-top: 4rem; padding: 2rem; text-align: center;
+  border-top: 1px solid var(--border); color: var(--muted); font-size: .78rem;
+}
+
+@media (max-width: 640px) {
+  .sec-head { flex-wrap: wrap; }
+  .sec-when { margin-left: 0; }
+  .flow-bar { gap: .25rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ HERO ═══ -->
+<div class="hero">
+  <span class="hero-tag">Panel Administracyjny Turnieju · Przewodnik</span>
+  <h1>Jak korzystać<br>z <em>Panelu Admina</em></h1>
+  <p class="hero-sub">Kompletny workflow od konfiguracji do wyników — w 8 krokach</p>
+  <div class="breadcrumb">
+    <a class="bc-item" href="#s1"><span class="n">1</span> Ustawienia</a>
+    <span class="bc-sep">›</span>
+    <a class="bc-item" href="#s2"><span class="n">2</span> Drużyny</a>
+    <span class="bc-sep">›</span>
+    <a class="bc-item" href="#s3"><span class="n">3</span> Sędziowie</a>
+    <span class="bc-sep">›</span>
+    <a class="bc-item" href="#s4"><span class="n">4</span> Rozstawienie</a>
+    <span class="bc-sep">›</span>
+    <a class="bc-item" href="#s5"><span class="n">5</span> Planowanie</a>
+    <span class="bc-sep">›</span>
+    <a class="bc-item" href="#s6"><span class="n">6</span> Mecze</a>
+    <span class="bc-sep">›</span>
+    <a class="bc-item" href="#s7"><span class="n">7</span> Wyniki</a>
+    <span class="bc-sep">›</span>
+    <a class="bc-item" href="#s8"><span class="n">8</span> Ranking</a>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ─── FLOW ─── -->
+  <div class="flow-bar">
+    <div class="fl"><span class="i">🔧</span> Ustawienia turnieju</div><span class="fl-arrow">→</span>
+    <div class="fl"><span class="i">🏅</span> Drużyny + składy</div><span class="fl-arrow">→</span>
+    <div class="fl"><span class="i">⚖️</span> Sędziowie</div><span class="fl-arrow">→</span>
+    <div class="fl"><span class="i">🎲</span> Rozstawienie</div><span class="fl-arrow">→</span>
+    <div class="fl"><span class="i">📅</span> Planowanie</div><span class="fl-arrow">→</span>
+    <div class="fl"><span class="i">🎯</span> Mecze / Protokoły</div><span class="fl-arrow">→</span>
+    <div class="fl"><span class="i">📊</span> Wyniki live</div><span class="fl-arrow">→</span>
+    <div class="fl"><span class="i">🏆</span> Ranking</div>
+  </div>
+  <div class="call call-tip">
+    <span class="call-ico">💡</span>
+    <p><strong>Zawsze zacznij od kroku 1.</strong> Ustawienia turnieju definiują aktywne dyscypliny i format rozgrywek — każdy inny moduł czyta z nich swój stan.</p>
+  </div>
+
+  <!-- ══════════════ S1 ══════════════ -->
+  <div class="sec" id="s1">
+    <div class="sec-head">
+      <div class="step-badge">1</div>
+      <div>
+        <div class="sec-title">🔧 Ustawienia turnieju</div>
+        <div class="sec-where">Nawigacja → <strong>Ustawienia turnieju</strong> › zakładki Rozgrywki / Przepisy / Informacje</div>
+      </div>
+      <div class="sec-when">Zrób JAKO PIERWSZY</div>
+    </div>
+
+    <div class="cards cards-3">
+      <div class="card" style="--c: var(--accent)">
+        <div class="card-ico">🎮</div>
+        <h3>Zakładka: Rozgrywki</h3>
+        <p>Dla każdej dyscypliny: włącz <strong>Liga</strong> i/lub <strong>Puchar</strong>, ustaw punktację W/R/P, liczbę grup, drużyn w grupie i rundy pucharowe.</p>
+      </div>
+      <div class="card" style="--c: var(--green)">
+        <div class="card-ico">⚙️</div>
+        <h3>Zakładka: Przepisy</h3>
+        <p>Czasy połów/kwarty, limity zmian, time-outy, faule — osobno na każdą dyscyplinę. Trafiają do protokołów drukowanych.</p>
+      </div>
+      <div class="card" style="--c: var(--orange)">
+        <div class="card-ico">📋</div>
+        <h3>Zakładka: Informacje</h3>
+        <p>Nazwa turnieju, daty, lokalizacja, organizator. Pojawiają się na nagłówkach protokołów PDF.</p>
+      </div>
+    </div>
+
+    <div class="steps">
+      <div class="step"><div class="step-n">01</div><div class="step-b">
+        <strong>Kliknij kartę dyscypliny i zaznacz format</strong>
+        <span>Checkbox <span class="tag tag-a">📊 Liga</span> lub <span class="tag tag-a">🏆 Puchar</span> — sekcje szczegółów rozwijają się automatycznie. Możesz włączyć oba.</span>
+      </div></div>
+      <div class="step"><div class="step-n">02</div><div class="step-b">
+        <strong>Ustaw punktację ligową (przyciski ＋/−)</strong>
+        <span>Domyślnie W=3 / R=1 / P=0. Remis istnieje tylko w Piłce Nożnej — w Koszykówce i Siatkówce pole R jest nieaktywne.</span>
+      </div></div>
+      <div class="step"><div class="step-n">03</div><div class="step-b">
+        <strong>Ustaw grupy i drużyny w grupie</strong>
+        <span>Suma <em>grupy × drużyn</em> wyświetlana na bieżąco. To liczba slotów w Rozstawieniu.</span>
+      </div></div>
+      <div class="step"><div class="step-n">04</div><div class="step-b">
+        <strong>Zaznacz rundy pucharowe</strong>
+        <span>Dostępne: <span class="tag">1/16</span> <span class="tag">1/8</span> <span class="tag">1/4</span> <span class="tag">Półfinał</span> <span class="tag">Finał</span>. Wybrane rundy = drabinka pucharu.</span>
+      </div></div>
+      <div class="step"><div class="step-n">05</div><div class="step-b">
+        <strong>Kliknij <span class="tag tag-a">Zapisz ustawienia</span> na dole każdej karty</strong>
+        <span>Każda dyscyplina zapisuje się osobno. Powtórz dla wszystkich aktywnych dyscyplin.</span>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ S2 ══════════════ -->
+  <div class="sec" id="s2">
+    <div class="sec-head">
+      <div class="step-badge">2</div>
+      <div>
+        <div class="sec-title">🏅 Drużyny i składy</div>
+        <div class="sec-where">Nawigacja → <strong>Drużyny</strong></div>
+      </div>
+      <div class="sec-when">Po kroku 1</div>
+    </div>
+
+    <div class="cards cards-2">
+      <div class="card" style="--c: var(--gold)">
+        <div class="card-ico">🏅</div>
+        <h3>Tworzenie drużyny</h3>
+        <p>Kliknij <span class="tag tag-a">+ Nowa drużyna</span> → wpisz nazwę i klasę (np. 3A). Drużyna pojawi się na liście natychmiast.</p>
+      </div>
+      <div class="card" style="--c: var(--accent)">
+        <div class="card-ico">👥</div>
+        <h3>Skład drużyny</h3>
+        <p>Kliknij drużynę na liście → panel składu po prawej. Dodawaj zawodników pojedynczo lub importuj listę hurtowo.</p>
+      </div>
+    </div>
+
+    <div class="steps">
+      <div class="step"><div class="step-n">01</div><div class="step-b">
+        <strong>Import hurtowy — szybszy dla dużych turniejów</strong>
+        <span>Kliknij <span class="tag">📋 Importuj listę</span> → wklej imiona i nazwiska, po jednym na linię (<code style="font-family:monospace">Jan Kowalski</code>). System tworzy osoby w bazie automatycznie.</span>
+      </div></div>
+      <div class="step"><div class="step-n">02</div><div class="step-b">
+        <strong>Dodaj zawodnika ręcznie — <span class="tag tag-a">+ Dodaj zawodnika</span></strong>
+        <span>Imię, nazwisko, klasa, kapitan ©, zgody RODO i uczestnictwa, wpisowe (zł). Pola RODO/zgody są zapisywane w bazie.</span>
+      </div></div>
+      <div class="step"><div class="step-n">03</div><div class="step-b">
+        <strong>Edytuj dane zawodnika — kliknij wiersz w tabeli składu</strong>
+        <span>Pola stają się edytowalne inline. Zapisz przez <span class="tag tag-g">💾</span> lub Escape aby anulować.</span>
+      </div></div>
+    </div>
+
+    <div class="call call-warn">
+      <span class="call-ico">⚠️</span>
+      <p><strong>Usunięcie drużyny</strong> kaskadowo usuwa jej zawodników oraz <em>wszystkie mecze</em> z jej udziałem. Operacji nie można cofnąć.</p>
+    </div>
+  </div>
+
+  <!-- ══════════════ S3 ══════════════ -->
+  <div class="sec" id="s3">
+    <div class="sec-head">
+      <div class="step-badge">3</div>
+      <div>
+        <div class="sec-title">⚖️ Sędziowie i Protokolanci</div>
+        <div class="sec-where">Nawigacja → <strong>Sędziowie</strong></div>
+      </div>
+      <div class="sec-when">Przed planowaniem meczów</div>
+    </div>
+
+    <div class="cards cards-3">
+      <div class="card" style="--c: #6c63ff">
+        <div class="card-ico">⚖️</div>
+        <h3>Sędzia</h3>
+        <p>Pojawia się w listach wyboru przy przypisywaniu osoby do meczu w Planowaniu.</p>
+      </div>
+      <div class="card" style="--c: var(--green)">
+        <div class="card-ico">📋</div>
+        <h3>Protokolant</h3>
+        <p>Uzupełnia protokół online w czasie meczu przez dedykowany link <span class="tag">/protokoly/</span>.</p>
+      </div>
+      <div class="card" style="--c: var(--gold)">
+        <div class="card-ico">★</div>
+        <h3>Obie role</h3>
+        <p>Jedna osoba może prowadzić mecz i protokołować. Pojawi się w obu listach wyboru.</p>
+      </div>
+    </div>
+
+    <div class="steps">
+      <div class="step"><div class="step-n">01</div><div class="step-b">
+        <strong>Dodaj osobę — <span class="tag tag-a">+ Dodaj osobę</span></strong>
+        <span>Imię, nazwisko, klasa i rola. Rola determinuje widoczność w listach podczas planowania meczów.</span>
+      </div></div>
+      <div class="step"><div class="step-n">02</div><div class="step-b">
+        <strong>Ustaw dostępność — zakładka <span class="tag">Dostępność</span> w profilu osoby</strong>
+        <span>Zaznacz dni i godziny. Na kalendarzu w Planowaniu dostępność wyświetla się jako kolorowe pasy na tle siatki godzin.</span>
+      </div></div>
+      <div class="step"><div class="step-n">03</div><div class="step-b">
+        <strong>Pokaż na kalendarzu — <span class="tag">📅 Pokaż na kalendarzu</span></strong>
+        <span>Przełącznik w profilu osoby. Nakłada kolorowe paski dostępności na widok kalendarza w Planowaniu — pomocne przy układaniu harmonogramu.</span>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ S4 ══════════════ -->
+  <div class="sec" id="s4">
+    <div class="sec-head">
+      <div class="step-badge">4</div>
+      <div>
+        <div class="sec-title">🎲 Rozstawienie drużyn</div>
+        <div class="sec-where">Nawigacja → <strong>Rozstawienie</strong> (sekcja Administracja)</div>
+      </div>
+      <div class="sec-when">Po dodaniu drużyn</div>
+    </div>
+
+    <div class="cards cards-2">
+      <div class="card" style="--c: var(--green)">
+        <div class="card-ico">📊</div>
+        <h3>Rozstawienie ligowe</h3>
+        <p>Przeciągnij drużyny do grup A, B, C…. Każda grupa to osobna tabela ligowa. Liczba slotów pochodzi z ustawień turnieju.</p>
+      </div>
+      <div class="card" style="--c: var(--gold)">
+        <div class="card-ico">🏆</div>
+        <h3>Rozstawienie pucharowe</h3>
+        <p>Dostępne tylko gdy dyscyplina ma włączony Puchar. Najczęściej uzupełniane automatycznie po zamknięciu ligi.</p>
+      </div>
+    </div>
+
+    <div class="steps">
+      <div class="step"><div class="step-n">01</div><div class="step-b">
+        <strong>Wybierz dyscyplinę i rodzaj: Liga lub Puchar</strong>
+        <span>Zakładka Puchar jest zablokowana 🔒 jeśli dyscyplina nie ma włączonego pucharu. Odblokuj w Ustawieniach turnieju.</span>
+      </div></div>
+      <div class="step"><div class="step-n">02</div><div class="step-b">
+        <strong>Przeciągnij drużyny z puli do slotów grupowych</strong>
+        <span>Pula po lewej = nieprzypisane drużyny. Grupy po prawej = sloty do wypełnienia. Obsługuje Drag &amp; Drop + zamianę miejscami.</span>
+      </div></div>
+      <div class="step"><div class="step-n">03</div><div class="step-b">
+        <strong>Lub kliknij <span class="tag">🎲 Losuj</span> — automatyczny przydział</strong>
+        <span>Tasowanie Fisher-Yates. Możesz potem poprawić ręcznie. Kliknięcie <span class="tag tag-r">✕</span> przy slotcie oddaje drużynę do puli.</span>
+      </div></div>
+      <div class="step"><div class="step-n">04</div><div class="step-b">
+        <strong>Zapisz — <span class="tag tag-g">💾 Zapisz</span> — a potem zablokuj — <span class="tag">🔒 Zablokuj</span></strong>
+        <span>Blokada chroni przed przypadkowymi zmianami po opublikowaniu harmonogramu. Status zmienia się na <em>🔒 Zablokowano</em>.</span>
+      </div></div>
+    </div>
+
+    <div class="call call-tip">
+      <span class="call-ico">💡</span>
+      <p><strong>Pozycja slotu = indeks w tabeli seeding.</strong> Generator meczów czyta kolejność rozstawienia i tworzy pary round-robin wewnątrz każdej grupy osobno.</p>
+    </div>
+  </div>
+
+  <!-- ══════════════ S5 ══════════════ -->
+  <div class="sec" id="s5">
+    <div class="sec-head">
+      <div class="step-badge">5</div>
+      <div>
+        <div class="sec-title">📅 Planowanie rozgrywek</div>
+        <div class="sec-where">Nawigacja → <strong>Planowanie</strong></div>
+      </div>
+      <div class="sec-when">Po rozstawieniu</div>
+    </div>
+
+    <div class="cards cards-2">
+      <div class="card" style="--c: var(--accent)">
+        <div class="card-ico">⚡</div>
+        <h3>Generator meczów</h3>
+        <p>Tworzy wszystkie pary ligowe (round-robin) lub pucharowe na podstawie rozstawienia. Wygenerowane mecze trafiają do kolejki.</p>
+      </div>
+      <div class="card" style="--c: var(--orange)">
+        <div class="card-ico">📆</div>
+        <h3>Kalendarz tygodniowy</h3>
+        <p>Siatka godzin. Przeciągnij mecz z kolejki na wybrany termin. Kliknij mecz na kalendarzu — edycja czasu, miejsca, sędziego.</p>
+      </div>
+    </div>
+
+    <div class="steps">
+      <div class="step"><div class="step-n">01</div><div class="step-b">
+        <strong>Kliknij <span class="tag tag-a">⚡ Generuj mecze</span></strong>
+        <span>Kreator pokazuje podgląd par do wygenerowania. Wybierz dyscyplinę i typ (liga / puchar), zatwierdź. Duplikaty są automatycznie pomijane.</span>
+      </div></div>
+      <div class="step"><div class="step-n">02</div><div class="step-b">
+        <strong>Otwórz kolejkę — panel boczny <span class="tag">📋 Kolejka</span></strong>
+        <span>Niezaplanowane mecze czekają tutaj. Filtruj po dyscyplinie. Przeciągnij mecz na dowolny slot w kalendarzu.</span>
+      </div></div>
+      <div class="step"><div class="step-n">03</div><div class="step-b">
+        <strong>Kliknij mecz na kalendarzu → edytuj szczegóły</strong>
+        <span>Dokładny czas, sala/boisko, sędzia i protokolant. Kolorowe paski na tle = dostępność zaznaczonych sędziów.</span>
+      </div></div>
+      <div class="step"><div class="step-n">04</div><div class="step-b">
+        <strong>Kliknij <span class="tag tag-g">💾 Zapisz wszystko</span> — pasek na górze</strong>
+        <span>Pasek pokazuje liczbę niezapisanych zmian. Jeden klik zapisuje cały kalendarz do bazy danych.</span>
+      </div></div>
+      <div class="step"><div class="step-n">05</div><div class="step-b">
+        <strong>Po lidze: <span class="tag tag-o">🏁 Zakończ ligę → losuj parowania</span></strong>
+        <span>Dostępny w widoku Sport (tabela ligowa). System oblicza tabele, wyłania awansujących i uzupełnia pierwszą rundę pucharu.</span>
+      </div></div>
+    </div>
+
+    <div class="call call-warn">
+      <span class="call-ico">⚠️</span>
+      <p><strong>Zmiany na kalendarzu są tymczasowe</strong> do momentu kliknięcia <strong>💾 Zapisz wszystko</strong>. Odświeżenie strony przed zapisem powoduje utratę zmian.</p>
+    </div>
+  </div>
+
+  <!-- ══════════════ S6 ══════════════ -->
+  <div class="sec" id="s6">
+    <div class="sec-head">
+      <div class="step-badge">6</div>
+      <div>
+        <div class="sec-title">🎯 Mecze i protokoły</div>
+        <div class="sec-where">Nawigacja → <strong>Mecze</strong> lub <strong>Protokoły</strong></div>
+      </div>
+      <div class="sec-when">Podczas turnieju</div>
+    </div>
+
+    <table class="tbl">
+      <thead><tr><th>Sytuacja</th><th>Akcja</th><th>Efekt</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Wpis wyniku po meczu</td>
+          <td><span class="tag tag-g">✏️ Uzupełnij protokół</span> → wpisz wynik</td>
+          <td>Status → Rozegrany, wynik trafia do tabel ligowych i rankingu</td>
+        </tr>
+        <tr>
+          <td>Prowadzenie meczu na żywo</td>
+          <td><span class="tag tag-o">▶ LIVE</span> → protokół online w nowej karcie</td>
+          <td>Protokolant rejestruje zdarzenia na bieżąco, wynik aktualizuje się w czasie rzeczywistym</td>
+        </tr>
+        <tr>
+          <td>Rzuty karne (piłka nożna)</td>
+          <td>Pola shootout_t1 / shootout_t2 w protokole</td>
+          <td>Wynik wyświetlany jako <em>1:0 (3:2 k.)</em> wszędzie w panelu</td>
+        </tr>
+        <tr>
+          <td>Druk protokołu przed meczem</td>
+          <td><span class="tag">🖨 Drukuj / PDF</span> → podgląd A4</td>
+          <td>Formatowany wg dyscypliny — kwarty / połowy / sety, pola ręcznego wypełnienia</td>
+        </tr>
+        <tr>
+          <td>Korekta wyniku po fakcie</td>
+          <td>Mecze → kliknij mecz → edytuj</td>
+          <td>Tabele ligowe i ranking przeliczane automatycznie po każdej zmianie</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="call call-ok">
+      <span class="call-ico">✅</span>
+      <p>Kliknięcie meczu w Dashboardzie lub w widokach dyscyplin <strong>automatycznie otwiera</strong> zakładkę Mecze z wybranym rekordem. Nie ma potrzeby ręcznego szukania.</p>
+    </div>
+  </div>
+
+  <!-- ══════════════ S7 ══════════════ -->
+  <div class="sec" id="s7">
+    <div class="sec-head">
+      <div class="step-badge">7</div>
+      <div>
+        <div class="sec-title">📊 Wyniki — widoki dyscyplin</div>
+        <div class="sec-where">Nawigacja → <span class="d-fn">⚽ Piłka Nożna</span> <span class="d-ko">🏀 Koszykówka</span> <span class="d-sv">🏐 Siatkówka</span></div>
+      </div>
+      <div class="sec-when">Na bieżąco</div>
+    </div>
+
+    <div class="cards cards-2">
+      <div class="card" style="--c: var(--green)">
+        <div class="card-ico">📊</div>
+        <h3>Tabela ligowa</h3>
+        <p>Grupy z punktami i bilansem. Siatkówka: klikalne kolumny <strong>Bil.S</strong> i <strong>Bil.P</strong> rozwijają szczegóły setów i punktów małych.</p>
+      </div>
+      <div class="card" style="--c: var(--gold)">
+        <div class="card-ico">🏆</div>
+        <h3>Drabinka pucharowa</h3>
+        <p>SVG bracket z wynikami. Kliknij mecz w drabince → otwiera szczegóły. Zwycięzca finału z medalem 🏆.</p>
+      </div>
+      <div class="card" style="--c: var(--accent)">
+        <div class="card-ico">📅</div>
+        <h3>Terminarz</h3>
+        <p>Wszystkie mecze dyscypliny — zaplanowane i rozegrane. Każdy wiersz jest klikalny i otwiera szczegóły meczu.</p>
+      </div>
+      <div class="card" style="--c: var(--orange)">
+        <div class="card-ico">⚽🏀</div>
+        <h3>Strzelcy / Rzucający</h3>
+        <p>Klasyfikacja z medalami 🥇🥈🥉. Koszykówka: 1pt / 2pt / 3pt / faule. Piłka Nożna: gole, kartki, śr/mecz.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ S8 ══════════════ -->
+  <div class="sec" id="s8">
+    <div class="sec-head">
+      <div class="step-badge">8</div>
+      <div>
+        <div class="sec-title">🏆 Ranking generalny</div>
+        <div class="sec-where">Nawigacja → <strong>Ranking</strong> (sekcja Administracja)</div>
+      </div>
+      <div class="sec-when">Przez cały turniej</div>
+    </div>
+
+    <div class="formula">
+      <span class="f-var f-total">Score</span>
+      <span class="f-op">=</span>
+      <span class="f-op">Σ(</span>
+      <span class="f-var f-pb">Pb</span>
+      <span class="f-op">×</span>
+      <span class="f-var f-wf">Wf</span>
+      <span class="f-op">×</span>
+      <span class="f-var f-wd">Wd</span>
+      <span class="f-op">)</span>
+      <div class="f-legend">
+        <span><strong style="color:var(--violet)">Pb</strong> — percentyl miejsca: <code>((N − pozycja + 1) / N) × 100</code></span>
+        <span><strong style="color:var(--orange)">Wf</strong> — waga formatu (Liga=1.0 · Hybryda=0.9 · Puchar=0.8)</span>
+        <span><strong style="color:var(--green)">Wd</strong> — waga dyscypliny (suwak 0.1–3.0, edytowalny)</span>
+      </div>
+    </div>
+
+    <div class="steps">
+      <div class="step"><div class="step-n">Pb</div><div class="step-b">
+        <strong>Punkty bazowe liczone automatycznie</strong>
+        <span>Liga i puchar używają tej samej formuły percentylowej. Im wyższe miejsce, tym więcej punktów — skala dostosowuje się do liczby drużyn.</span>
+      </div></div>
+      <div class="step"><div class="step-n">Wf</div><div class="step-b">
+        <strong>Zmień wagi formatów — Ustawienia turnieju → zakładka Ranking</strong>
+        <span>Suwaki 0.1–2.0. Wpływ: turniej tylko ligowy ma Wf=1.0, hybryda 0.9, tylko puchar 0.8. Możesz dostosować.</span>
+      </div></div>
+      <div class="step"><div class="step-n">Wd</div><div class="step-b">
+        <strong>Zmień wagi dyscyplin — suwaki 0.1–3.0</strong>
+        <span>Możesz nadać różną ważność Piłce Nożnej, Koszykówce i Siatkówce. Każda zmiana natychmiast przelicza tabele rankingowe.</span>
+      </div></div>
+      <div class="step"><div class="step-n">?</div><div class="step-b">
+        <strong>Najedź na chip dyscypliny w tabeli rankingowej</strong>
+        <span>Tooltip pokazuje pełne rozbicie: Pb × Wf × Wd = punkty, z opisem słownym etapu (np. „2. miejsce w lidze", „Puchar: Półfinał").</span>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ DASHBOARD ══════════════ -->
+  <div class="sec">
+    <div class="sec-head">
+      <div class="step-badge dim">🏠</div>
+      <div>
+        <div class="sec-title">Dashboard — strona startowa</div>
+        <div class="sec-where">Automatycznie po otwarciu panelu</div>
+      </div>
+    </div>
+    <div class="cards cards-3">
+      <div class="card" style="--c:var(--accent)"><div class="card-ico">📊</div><h3>Statystyki ogólne</h3><p>Łączna liczba drużyn, zawodników, meczów zaplanowanych i rozegranych.</p></div>
+      <div class="card" style="--c:var(--green)"><div class="card-ico">📅</div><h3>Nadchodzące mecze</h3><p>6 najbliższych zaplanowanych meczów. Klikalny wiersz otwiera szczegóły.</p></div>
+      <div class="card" style="--c:var(--orange)"><div class="card-ico">✅</div><h3>Ostatnie wyniki</h3><p>6 ostatnio rozegranych meczów z wynikami. Klikalny — otwiera szczegóły.</p></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ BŁĘDY ══════════════ -->
+  <div class="sec">
+    <div class="sec-head">
+      <div class="step-badge dim" style="background:rgba(239,68,68,.15);border-color:var(--red)">⚠</div>
+      <div><div class="sec-title">Najczęstsze błędy</div></div>
+    </div>
+    <div class="timeline">
+      <div class="tl-item">
+        <h4>❌ Generowanie meczów bez zapisanego rozstawienia</h4>
+        <p>Generator czyta tabelę seeding. Bez rozstawienia nie wie do jakich grup przypisać drużyny — tworzy mecze nieprawidłowo lub zgłasza brak danych.</p>
+      </div>
+      <div class="tl-item">
+        <h4>❌ Zmiana formatu po wygenerowaniu meczów</h4>
+        <p>Wyłączenie has_league/has_cup nie usuwa już istniejących meczów. Należy je ręcznie usunąć w sekcji Planowanie przed ponowną generacją.</p>
+      </div>
+      <div class="tl-item">
+        <h4>❌ Kliknięcie „Zakończ ligę" przed rozegraniem wszystkich meczów</h4>
+        <p>System użyje niepełnej tabeli do parowania pucharu. Awansują złe drużyny jeśli wyniki nie są kompletne.</p>
+      </div>
+      <div class="tl-item">
+        <h4>❌ Zamknięcie karty bez zapisania kalendarza</h4>
+        <p>Przeciągnięcia na kalendarzu są lokalne. <strong>💾 Zapisz wszystko</strong> to obowiązkowy krok — pasek zmiany niezerowy = masz niezapisane dane.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">Panel Administracyjny Turnieju · Tutorial użytkownika · Supabase + Vanilla JS</div>
+</body>
+</html>

@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel Turnieju — Dokumentacja Techniczna</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #080a12; --bg2: #0f1120; --bg3: #151828; --bg4: #1c2038;
+  --border: #202540; --border2: #2a3060;
+  --text: #d8ddf0; --muted: #5a6080; --dim: #363d60;
+  --accent: #6c63ff; --green: #22c55e; --orange: #fb923c;
+  --violet: #a78bfa; --gold: #f59e0b; --red: #ef4444; --cyan: #22d3ee;
+  --fn: #22c55e; --ko: #fb923c; --sv: #a78bfa;
+  --r: 8px;
+}
+html { scroll-behavior: smooth; }
+body { font-family: 'Syne', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; font-size: 14px; }
+
+/* ─── LAYOUT ─── */
+.page { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+
+/* ─── SIDEBAR NAV ─── */
+.sidebar {
+  position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  background: var(--bg2); border-right: 1px solid var(--border);
+  padding: 1.5rem 0; flex-shrink: 0;
+}
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 2px; }
+.sb-logo {
+  padding: 0 1.2rem 1.2rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: .8rem;
+}
+.sb-logo-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .58rem; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--muted); display: block; margin-bottom: .2rem;
+}
+.sb-logo-title { font-size: .9rem; font-weight: 800; color: var(--text); }
+.sb-section-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .58rem; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--dim); padding: .6rem 1.2rem .2rem;
+}
+.sb-link {
+  display: flex; align-items: center; gap: .5rem;
+  padding: .3rem 1.2rem; font-size: .78rem; color: var(--muted);
+  text-decoration: none; transition: all .15s; border-left: 2px solid transparent;
+}
+.sb-link:hover { color: var(--text); background: rgba(255,255,255,.025); }
+.sb-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(108,99,255,.06); }
+.sb-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+/* ─── MAIN ─── */
+.main { padding: 2.5rem 2.5rem 4rem; min-width: 0; }
+
+/* ─── PAGE HEADER ─── */
+.page-head { margin-bottom: 3rem; }
+.page-head-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .62rem; letter-spacing: .15em; text-transform: uppercase;
+  color: var(--accent); margin-bottom: .6rem; display: block;
+}
+.page-head h1 { font-size: 2.2rem; font-weight: 800; letter-spacing: -.03em; line-height: 1.1; margin-bottom: .6rem; }
+.page-head p  { color: var(--muted); font-size: .88rem; max-width: 560px; line-height: 1.6; }
+
+/* ─── SECTION ─── */
+.sec { margin-bottom: 3.5rem; scroll-margin-top: 2rem; }
+.sec-title {
+  font-size: 1.2rem; font-weight: 800; letter-spacing: -.02em;
+  padding-bottom: .7rem; margin-bottom: 1.4rem;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: .6rem;
+}
+.sec-title code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .85rem; color: var(--accent);
+  background: rgba(108,99,255,.1); border: 1px solid rgba(108,99,255,.2);
+  padding: .1rem .4rem; border-radius: 4px; font-weight: 600;
+}
+.sub-title {
+  font-size: .78rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--muted); margin: 1.5rem 0 .6rem; display: flex; align-items: center; gap: .4rem;
+}
+.sub-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* ─── TABLES ─── */
+.tbl { width: 100%; border-collapse: collapse; font-size: .8rem; margin: .5rem 0 1.2rem; }
+.tbl th {
+  padding: .4rem .7rem; text-align: left;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .65rem; font-weight: 600; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--muted);
+  background: var(--bg3); border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.tbl td {
+  padding: .45rem .7rem; border-bottom: 1px solid var(--border);
+  vertical-align: top; line-height: 1.4;
+}
+.tbl tr:last-child td { border-bottom: none; }
+.tbl tr:hover td { background: rgba(255,255,255,.013); }
+.tbl td:first-child { font-family: 'JetBrains Mono', monospace; font-size: .75rem; white-space: nowrap; }
+.col-name  { color: var(--cyan); }
+.col-file  { color: var(--accent); }
+.col-note  { color: var(--muted); }
+.col-table { color: var(--orange); }
+.col-type  { color: var(--violet); }
+.col-from  { color: var(--green); }
+.col-to    { color: var(--gold); }
+
+/* ─── CODE / MONO ─── */
+code {
+  font-family: 'JetBrains Mono', monospace; font-size: .77rem;
+  background: var(--bg3); border: 1px solid var(--border);
+  padding: .1rem .35rem; border-radius: 4px; color: var(--cyan);
+}
+.fn  { color: var(--violet); background: rgba(167,139,250,.08); border-color: rgba(167,139,250,.2); }
+.api { color: var(--green);  background: rgba(34,197,94,.07);   border-color: rgba(34,197,94,.2);  }
+.tbl-ref { color: var(--orange); background: rgba(251,146,60,.08); border-color: rgba(251,146,60,.2); }
+.glb { color: var(--gold);   background: rgba(245,158,11,.08);  border-color: rgba(245,158,11,.2); }
+
+/* ─── FILE CARDS ─── */
+.file-grid { display: grid; gap: .7rem; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); margin-bottom: 1.5rem; }
+.file-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 1rem 1.2rem;
+  position: relative; overflow: hidden;
+}
+.file-card::before {
+  content: ''; position: absolute; top: 0; left: 0; bottom: 0;
+  width: 3px; background: var(--fc, var(--accent));
+}
+.fc-name { font-family: 'JetBrains Mono', monospace; font-size: .8rem; font-weight: 600; color: var(--text); margin-bottom: .25rem; }
+.fc-desc { font-size: .77rem; color: var(--muted); margin-bottom: .5rem; line-height: 1.5; }
+.fc-tags { display: flex; flex-wrap: wrap; gap: .25rem; }
+.fc-tag {
+  font-family: 'JetBrains Mono', monospace; font-size: .65rem;
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 4px; padding: .1rem .35rem; color: var(--muted);
+}
+
+/* ─── LOAD ORDER ─── */
+.load-order {
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: .3rem; padding: 1rem 1.2rem;
+  background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r);
+  font-family: 'JetBrains Mono', monospace; margin: .5rem 0 1rem;
+}
+.lo-item {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 5px; padding: .2rem .5rem; font-size: .72rem; color: var(--text);
+  display: flex; align-items: center; gap: .3rem;
+}
+.lo-n { font-size: .6rem; color: var(--muted); }
+.lo-arrow { color: var(--dim); font-size: .7rem; }
+
+/* ─── DEP MATRIX ─── */
+.matrix-wrap { overflow-x: auto; margin: .5rem 0 1.2rem; border: 1px solid var(--border); border-radius: var(--r); }
+.matrix { border-collapse: collapse; font-size: .7rem; min-width: 100%; }
+.matrix th, .matrix td { border: 1px solid var(--border); padding: .3rem .45rem; white-space: nowrap; }
+.matrix thead th {
+  background: var(--bg3); font-family: 'JetBrains Mono', monospace;
+  font-size: .6rem; font-weight: 600; color: var(--muted); text-align: center;
+}
+.matrix tbody th {
+  background: var(--bg3); font-family: 'JetBrains Mono', monospace;
+  font-size: .68rem; font-weight: 600; color: var(--text); text-align: left; padding-right: .7rem;
+}
+.matrix td { text-align: center; font-family: 'JetBrains Mono', monospace; background: var(--bg2); }
+.m-call  { background: rgba(108,99,255,.2) !important; color: var(--accent); }
+.m-def   { background: rgba(34,197,94,.15) !important; color: var(--green); }
+.m-read  { background: rgba(245,158,11,.12) !important; color: var(--gold); }
+.m-write { background: rgba(239,68,68,.12) !important; color: var(--red); }
+.m-rw    { background: rgba(251,146,60,.15) !important; color: var(--orange); }
+.m-na    { background: var(--bg3) !important; color: var(--dim); }
+
+/* ─── CALL BOXES ─── */
+.call {
+  display: flex; gap: .65rem; padding: .8rem 1rem;
+  border-radius: 6px; font-size: .8rem; line-height: 1.55; margin: .6rem 0;
+}
+.call-note { background: rgba(108,99,255,.07); border: 1px solid rgba(108,99,255,.2); }
+.call-warn { background: rgba(245,158,11,.07); border: 1px solid rgba(245,158,11,.2); }
+.call-fix  { background: rgba(34,197,94,.06);  border: 1px solid rgba(34,197,94,.18); }
+.call-ico  { font-size: .9rem; flex-shrink: 0; margin-top: .05rem; }
+.call p    { color: var(--text); }
+
+/* ─── STATE BLOCK ─── */
+.state-block {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r);
+  padding: .9rem 1.1rem; margin: .4rem 0 1rem; font-family: 'JetBrains Mono', monospace;
+  font-size: .73rem; line-height: 1.8;
+}
+.sv { color: var(--violet); } .sc { color: var(--muted); } .st { color: var(--cyan); }
+
+/* ─── LEGEND ─── */
+.legend {
+  display: flex; flex-wrap: wrap; gap: .5rem 1.2rem;
+  padding: .7rem 1rem; background: var(--bg3);
+  border: 1px solid var(--border); border-radius: 6px;
+  font-size: .73rem; margin: .5rem 0 1rem;
+}
+.legend span { display: flex; align-items: center; gap: .35rem; color: var(--muted); }
+.l-box { width: 12px; height: 12px; border-radius: 2px; flex-shrink: 0; }
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 860px) {
+  .page { grid-template-columns: 1fr; }
+  .sidebar { position: static; height: auto; display: none; }
+  .main { padding: 1.5rem 1rem 3rem; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- ═══════════════ SIDEBAR ═══════════════ -->
+<nav class="sidebar">
+  <div class="sb-logo">
+    <span class="sb-logo-tag">Dokumentacja techniczna</span>
+    <div class="sb-logo-title">Panel Turnieju</div>
+  </div>
+
+  <div class="sb-section-label">Architektura</div>
+  <a class="sb-link" href="#arch"><span class="sb-dot" style="background:var(--accent)"></span>Stos technologiczny</a>
+  <a class="sb-link" href="#load-order"><span class="sb-dot" style="background:var(--cyan)"></span>Kolejność ładowania</a>
+  <a class="sb-link" href="#globals"><span class="sb-dot" style="background:var(--gold)"></span>Globals — API publiczne</a>
+
+  <div class="sb-section-label">Pliki JS</div>
+  <a class="sb-link" href="#f-globals"><span class="sb-dot" style="background:var(--gold)"></span>admin-globals.js</a>
+  <a class="sb-link" href="#f-nav"><span class="sb-dot" style="background:var(--accent)"></span>admin-nav.js</a>
+  <a class="sb-link" href="#f-dashboard"><span class="sb-dot" style="background:var(--cyan)"></span>admin-dashboard.js</a>
+  <a class="sb-link" href="#f-turniej"><span class="sb-dot" style="background:var(--orange)"></span>admin-turniej.js</a>
+  <a class="sb-link" href="#f-druzyny"><span class="sb-dot" style="background:var(--green)"></span>admin-druzyny.js</a>
+  <a class="sb-link" href="#f-rozstawienie"><span class="sb-dot" style="background:var(--violet)"></span>admin-rozstawienie.js</a>
+  <a class="sb-link" href="#f-planowanie"><span class="sb-dot" style="background:var(--red)"></span>admin-planowanie.js</a>
+  <a class="sb-link" href="#f-sedziowie"><span class="sb-dot" style="background:#6c63ff"></span>admin-sedziowie.js</a>
+  <a class="sb-link" href="#f-ranking"><span class="sb-dot" style="background:var(--gold)"></span>admin-ranking.js</a>
+  <a class="sb-link" href="#f-sport"><span class="sb-dot" style="background:var(--fn)"></span>admin-sport.js</a>
+  <a class="sb-link" href="#f-mecze"><span class="sb-dot" style="background:var(--cyan)"></span>admin-mecze.js</a>
+  <a class="sb-link" href="#f-print"><span class="sb-dot" style="background:var(--muted)"></span>admin-print-protocols.js</a>
+
+  <div class="sb-section-label">Baza danych</div>
+  <a class="sb-link" href="#db-tables"><span class="sb-dot" style="background:var(--orange)"></span>Tabele i widoki</a>
+  <a class="sb-link" href="#db-endpoints"><span class="sb-dot" style="background:var(--green)"></span>Endpointy API</a>
+
+  <div class="sb-section-label">Zależności</div>
+  <a class="sb-link" href="#dep-matrix"><span class="sb-dot" style="background:var(--red)"></span>Macierz zależności</a>
+  <a class="sb-link" href="#dep-crossfile"><span class="sb-dot" style="background:var(--violet)"></span>Cross-file calls</a>
+  <a class="sb-link" href="#dep-state"><span class="sb-dot" style="background:var(--cyan)"></span>Stan globalny</a>
+  <a class="sb-link" href="#issues"><span class="sb-dot" style="background:var(--red)"></span>Znane problemy</a>
+</nav>
+
+<!-- ═══════════════ MAIN ═══════════════ -->
+<main class="main">
+
+  <div class="page-head">
+    <span class="page-head-tag">dokumentacja techniczna · v2.0 · marzec 2026</span>
+    <h1>Mapa zależności<br>Panel Turnieju</h1>
+    <p>Kompletna rozpiska plików JS, funkcji, zależności cross-file, tabel Supabase i stanów globalnych. Vanilla JS + Supabase PostgreSQL. Brak frameworków.</p>
+  </div>
+
+  <!-- ══════════ ARCHITEKTURA ══════════ -->
+  <div class="sec" id="arch">
+    <div class="sec-title">🏗 Stos technologiczny</div>
+    <table class="tbl">
+      <thead><tr><th>Warstwa</th><th>Technologia</th><th>Szczegóły</th></tr></thead>
+      <tbody>
+        <tr><td class="col-name">Frontend</td><td>Vanilla JS (ES2022+)</td><td class="col-note">Brak frameworków. SPA — sekcje jako <code>&lt;section class="view"&gt;</code>, przełączane przez <code class="fn">navigate()</code></td></tr>
+        <tr><td class="col-name">Backend / DB</td><td>Supabase (PostgreSQL)</td><td class="col-note">Klient: CDN <code>@supabase/supabase-js</code>. Eksponowany jako <code class="glb">window.supabase</code></td></tr>
+        <tr><td class="col-name">Fonty</td><td>Google Fonts (CDN)</td><td class="col-note">JetBrains Mono (protokoły), system-ui (interfejs)</td></tr>
+        <tr><td class="col-name">PDF/Print</td><td>window.print() + @page CSS</td><td class="col-note">Otwiera nowe okno z wbudowanym CSS, wywołuje <code>print()</code> po 300ms</td></tr>
+        <tr><td class="col-name">SVG bracket</td><td>Vanilla SVG DOM API</td><td class="col-note">Drabinka pucharowa generowana dynamicznie w <code>admin-sport.js</code></td></tr>
+        <tr><td class="col-name">Drag &amp; Drop</td><td>HTML5 DnD API</td><td class="col-note">Rozstawienie (sloty) i Planowanie (kalendarz) — natywne eventy dragstart/drop</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ══════════ LOAD ORDER ══════════ -->
+  <div class="sec" id="load-order">
+    <div class="sec-title">📦 Kolejność ładowania skryptów</div>
+    <p style="font-size:.82rem;color:var(--muted);margin-bottom:.8rem">Skrypty ładowane sekwencyjnie przez <code>await new Promise()</code> w <code>admin.html</code>. Każdy kolejny plik może korzystać z <code>window.*</code> eksportów poprzednich.</p>
+    <div class="load-order">
+      <div class="lo-item"><span class="lo-n">1</span> admin-globals.js</div><span class="lo-arrow">→</span>
+      <div class="lo-item"><span class="lo-n">2</span> admin-nav.js</div><span class="lo-arrow">→</span>
+      <div class="lo-item"><span class="lo-n">3</span> admin-dashboard.js</div><span class="lo-arrow">→</span>
+      <div class="lo-item"><span class="lo-n">4</span> admin-turniej.js</div><span class="lo-arrow">→</span>
+      <div class="lo-item"><span class="lo-n">5</span> admin-druzyny.js</div><span class="lo-arrow">→</span>
+      <div class="lo-item"><span class="lo-n">6</span> admin-rozstawienie.js</div><span class="lo-arrow">→</span>
+      <div class="lo-item"><span class="lo-n">7</span> admin-planowanie.js</div><span class="lo-arrow">→</span>
+      <div class="lo-item"><span class="lo-n">8</span> admin-sedziowie.js</div><span class="lo-arrow">→</span>
+      <div class="lo-item"><span class="lo-n">9</span> admin-ranking.js</div><span class="lo-arrow">→</span>
+      <div class="lo-item"><span class="lo-n">10</span> admin-sport.js</div><span class="lo-arrow">→</span>
+      <div class="lo-item"><span class="lo-n">11</span> admin-mecze.js</div><span class="lo-arrow">→</span>
+      <div class="lo-item"><span class="lo-n">12</span> admin-print-protocols.js</div>
+    </div>
+    <div class="call call-warn">
+      <span class="call-ico">⚠️</span>
+      <p><strong>Kolejność jest krytyczna.</strong> <code>admin-globals.js</code> musi być pierwszy — eksportuje <code>supabase</code>, <code>api()</code>, <code>$</code>, <code>el</code> i wszystkie wrappery CRUD. <code>admin-planowanie.js</code> musi być przed <code>admin-sedziowie.js</code> bo ten drugi używa <code>plAvailHighlight</code> i <code>renderCalendar()</code> z planowania.</p>
+    </div>
+  </div>
+
+  <!-- ══════════ GLOBALS API ══════════ -->
+  <div class="sec" id="globals">
+    <div class="sec-title">🌐 <code>admin-globals.js</code> — API publiczne (<code>window.*</code>)</div>
+    <p style="font-size:.82rem;color:var(--muted);margin-bottom:1rem">Wszystkie eksporty przez <code>window.X = X</code> na końcu pliku. Dostępne w każdym kolejnym skrypcie bez importu.</p>
+
+    <div class="sub-title">Narzędzia i pomocnicze</div>
+    <table class="tbl">
+      <thead><tr><th>Nazwa</th><th>Sygnatura</th><th>Opis</th></tr></thead>
+      <tbody>
+        <tr><td class="col-name">$</td><td><code class="fn">$(id) → Element</code></td><td class="col-note">Skrót <code>document.getElementById(id)</code></td></tr>
+        <tr><td class="col-name">el</td><td><code class="fn">el(tag, cls, html) → Element</code></td><td class="col-note">Tworzy element z klasą i opcjonalnym innerHTML</td></tr>
+        <tr><td class="col-name">loader</td><td><code class="fn">loader(bool)</code></td><td class="col-note">Pokazuje / chowa globalny spinner (<code>#loader</code>)</td></tr>
+        <tr><td class="col-name">fmtDate</td><td><code class="fn">fmtDate(date) → string</code></td><td class="col-note">Data → DD.MM.YYYY</td></tr>
+        <tr><td class="col-name">fmtTime</td><td><code class="fn">fmtTime(time) → string</code></td><td class="col-note">HH:MM:SS → HH:MM</td></tr>
+        <tr><td class="col-name">fmtScore</td><td><code class="fn">fmtScore(m) → string</code></td><td class="col-note">Obiekt meczu → <em>2:1</em> lub <em>2:1 (3:2 k.)</em></td></tr>
+        <tr><td class="col-name">matchWinner</td><td><code class="fn">matchWinner(m) → 1|2|0</code></td><td class="col-note">Wyznacza zwycięzcę uwzględniając rzuty karne</td></tr>
+        <tr><td class="col-name">hasShootout</td><td><code class="fn">hasShootout(m) → bool</code></td><td class="col-note">Sprawdza czy mecz miał rzuty karne (shootout)</td></tr>
+        <tr><td class="col-name">normFmt</td><td><code class="fn">normFmt(raw) → {disc: fmt}</code></td><td class="col-note">Tablica tournament_format → mapa dyscyplina→format</td></tr>
+        <tr><td class="col-name">DISC_CLASS</td><td><code class="glb">const</code></td><td class="col-note">Mapa dyscyplina → klasa CSS (football/basketball/volleyball)</td></tr>
+        <tr><td class="col-name">DISC_EMOJI</td><td><code class="glb">const</code></td><td class="col-note">Mapa dyscyplina → emoji</td></tr>
+        <tr><td class="col-name">ROUND_ORDER</td><td><code class="glb">const string[]</code></td><td class="col-note"><code>['1/16','1/8','1/4','Półfinał','Finał']</code> — globalny porządek rund</td></tr>
+      </tbody>
+    </table>
+
+    <div class="sub-title">Warstwa API — <code>api(path)</code></div>
+    <div class="call call-note">
+      <span class="call-ico">ℹ️</span>
+      <p><code class="fn">api(path)</code> sprawdza <code>ENDPOINT_MAP</code> (4 predefiniowane ścieżki). Dla pozostałych ścieżek parsuje URL i buduje zapytania Supabase dynamicznie przez <code>matchEndpoint()</code>. Zwraca dane lub <code>null</code> przy błędzie (błąd logowany do konsoli).</p>
+    </div>
+
+    <div class="sub-title">Wrappery CRUD</div>
+    <table class="tbl">
+      <thead><tr><th>Funkcja</th><th>Tabela Supabase</th><th>Operacja</th></tr></thead>
+      <tbody>
+        <tr><td class="col-name">createMatch(body)</td><td class="col-table">matches</td><td class="col-note">INSERT + odczyt z <code>matches_full</code></td></tr>
+        <tr><td class="col-name">updateMatch(id, body)</td><td class="col-table">matches</td><td class="col-note">UPDATE wg id</td></tr>
+        <tr><td class="col-name">deleteMatch(id)</td><td class="col-table">matches</td><td class="col-note">DELETE kaskadowy (periods, logs, stats)</td></tr>
+        <tr><td class="col-name">createTeam(body)</td><td class="col-table">teams</td><td class="col-note">INSERT</td></tr>
+        <tr><td class="col-name">updateTeam(id, body)</td><td class="col-table">teams</td><td class="col-note">UPDATE wg id</td></tr>
+        <tr><td class="col-name">deleteTeam(id)</td><td class="col-table">teams</td><td class="col-note">DELETE kaskadowy (players, matches)</td></tr>
+        <tr><td class="col-name">createPlayer(body)</td><td class="col-table">people + players</td><td class="col-note">INSERT do obu tabel w jednej transakcji</td></tr>
+        <tr><td class="col-name">updatePlayer(id, body)</td><td class="col-table">players + people</td><td class="col-note">UPDATE obu tabel</td></tr>
+        <tr><td class="col-name">deletePlayer(id)</td><td class="col-table">players</td><td class="col-note">DELETE (person_id zachowany w people)</td></tr>
+        <tr><td class="col-name">createPerson(body)</td><td class="col-table">people</td><td class="col-note">INSERT (sędziowie/protokolanci)</td></tr>
+        <tr><td class="col-name">updatePerson(id, body)</td><td class="col-table">people</td><td class="col-note">UPDATE wg id</td></tr>
+        <tr><td class="col-name">deletePerson(id)</td><td class="col-table">people</td><td class="col-note">DELETE (kaskada do players, availability)</td></tr>
+        <tr><td class="col-name">saveAvailability(personId, slots)</td><td class="col-table">people_availability</td><td class="col-note">DELETE wszystkich dla osoby + INSERT nowych</td></tr>
+        <tr><td class="col-name">saveTournamentFormat(disc, body)</td><td class="col-table">tournament_format</td><td class="col-note">UPSERT wg discipline</td></tr>
+        <tr><td class="col-name">saveTournamentSettings(body)</td><td class="col-table">tournament_settings</td><td class="col-note">UPSERT wierszy {key,value}</td></tr>
+        <tr><td class="col-name">saveSeeding(disc, type, seeds)</td><td class="col-table">seeding</td><td class="col-note">DELETE dla disc+type + INSERT nowych pozycji</td></tr>
+        <tr><td class="col-name">closeLeague(discipline)</td><td class="col-table">tournament_format</td><td class="col-note">UPDATE league_closed=true</td></tr>
+        <tr><td class="col-name">savePlayerStats(body)</td><td class="col-table">match_player_stats</td><td class="col-note">UPSERT wg match_id+player_id</td></tr>
+        <tr><td class="col-name">updatePlayerStats(matchId, playerId, body)</td><td class="col-table">match_player_stats</td><td class="col-note">UPDATE wg match_id+player_id</td></tr>
+        <tr><td class="col-name">saveTeamStats(body)</td><td class="col-table">match_team_stats</td><td class="col-note">UPSERT wg match_id+team_id</td></tr>
+        <tr><td class="col-name">updateTeamStats(matchId, teamId, body)</td><td class="col-table">match_team_stats</td><td class="col-note">UPDATE wg match_id+team_id</td></tr>
+        <tr><td class="col-name">savePeriods(matchId, sets)</td><td class="col-table">match_periods</td><td class="col-note">DELETE dla match_id + INSERT nowych</td></tr>
+        <tr><td class="col-name">saveLogs(matchId, logs)</td><td class="col-table">match_logs</td><td class="col-note">DELETE dla match_id + INSERT nowych</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ══════════ FILE PROFILES ══════════ -->
+  <div class="sec" id="f-globals">
+    <div class="sec-title">📄 Profile plików</div>
+
+    <div class="file-grid">
+      <div class="file-card" style="--fc: var(--gold)" id="f-globals-card">
+        <div class="fc-name">admin-globals.js</div>
+        <div class="fc-desc">Fundament aplikacji. Supabase client, wszystkie wrappery CRUD, helper functions, stałe globalne. Eksportuje ~40 symboli przez <code>window.*</code>.</div>
+        <div class="fc-tags">
+          <span class="fc-tag">supabase client</span><span class="fc-tag">api()</span><span class="fc-tag">CRUD wrappers</span><span class="fc-tag">window exports</span>
+        </div>
+      </div>
+
+      <div class="file-card" style="--fc: var(--accent)" id="f-nav-card">
+        <div class="fc-name">admin-nav.js</div>
+        <div class="fc-desc">Router SPA. Funkcja <code>navigate(view)</code> przełącza sekcje i wywołuje loader modułu. <code>navigateToMatch(id)</code> — deep link do konkretnego meczu. <code>srApplyFormatConstraints()</code> — blokuje zakładkę Puchar.</div>
+        <div class="fc-tags">
+          <span class="fc-tag">navigate()</span><span class="fc-tag">navigateToMatch()</span><span class="fc-tag">checkStatus()</span><span class="fc-tag">srApplyFormatConstraints()</span>
+        </div>
+      </div>
+
+      <div class="file-card" style="--fc: var(--cyan)" id="f-dashboard-card">
+        <div class="fc-name">admin-dashboard.js</div>
+        <div class="fc-desc">Strona startowa. Trzy niezależne sekcje: statystyki ogólne, 6 nadchodzących meczów, 6 ostatnich wyników. Każda ładuje się osobnym zapytaniem.</div>
+        <div class="fc-tags">
+          <span class="fc-tag">loadDashboard()</span><span class="fc-tag">buildDashMatchRow()</span>
+        </div>
+      </div>
+
+      <div class="file-card" style="--fc: var(--orange)" id="f-turniej-card">
+        <div class="fc-name">admin-turniej.js</div>
+        <div class="fc-desc">Ustawienia turnieju: format dyscyplin (liga/puchar/rundy/grupy), punktacja ligowa, przepisy gry (czasy, faule, zmiany), informacje ogólne (nazwa, daty). Zakładka Ranking przekazuje do <code>loadRankingTab()</code>.</div>
+        <div class="fc-tags">
+          <span class="fc-tag">loadTurniej()</span><span class="fc-tag">buildDiscCards()</span><span class="fc-tag">saveDiscCard()</span><span class="fc-tag">saveRules()</span><span class="fc-tag">saveInfo()</span>
+        </div>
+      </div>
+
+      <div class="file-card" style="--fc: var(--green)" id="f-druzyny-card">
+        <div class="fc-name">admin-druzyny.js</div>
+        <div class="fc-desc">Zarządzanie drużynami i zawodnikami. Lista drużyn + panel składu. Import hurtowy przez <code>parseBulkList()</code>. Inline editing wierszy tabeli.</div>
+        <div class="fc-tags">
+          <span class="fc-tag">loadAdminTeams()</span><span class="fc-tag">selectTeam()</span><span class="fc-tag">renderPlayersTable()</span><span class="fc-tag">showBulkImportModal()</span>
+        </div>
+      </div>
+
+      <div class="file-card" style="--fc: var(--violet)" id="f-rozstawienie-card">
+        <div class="fc-name">admin-rozstawienie.js</div>
+        <div class="fc-desc">Drag &amp; Drop rozstawienie drużyn do grup/slotów. Dwa tryby: liga (grupy A/B/C) i puchar (drabinka). Stan lokalny <code>srSlots[]</code> + <code>srPool[]</code>. Zawiera też <code>showAddPlayerModal()</code> używaną przez druzyny.js.</div>
+        <div class="fc-tags">
+          <span class="fc-tag">loadRozstawienie()</span><span class="fc-tag">srInitWorkspace()</span><span class="fc-tag">srRandomize()</span><span class="fc-tag">srSave() → saveSeeding()</span><span class="fc-tag">showAddPlayerModal()</span>
+        </div>
+      </div>
+
+      <div class="file-card" style="--fc: var(--red)" id="f-planowanie-card">
+        <div class="fc-name">admin-planowanie.js</div>
+        <div class="fc-desc">Największy moduł (~1850 funkcji). Kalendarz tygodniowy/dzienny, kolejka meczów, generator (liga round-robin + puchar), modal edycji meczu. Stan w <code>plQueue[]</code>, <code>plScheduled[]</code>, <code>plAvailHighlight[]</code> (czytany przez sedziowie.js).</div>
+        <div class="fc-tags">
+          <span class="fc-tag">loadPlanowanie()</span><span class="fc-tag">renderCalendar()</span><span class="fc-tag">renderQueue()</span><span class="fc-tag">runGeneration()</span><span class="fc-tag">saveAllToServer()</span><span class="fc-tag">openCloseLeagueModal()</span>
+        </div>
+      </div>
+
+      <div class="file-card" style="--fc: #6c63ff" id="f-sedziowie-card">
+        <div class="fc-name">admin-sedziowie.js</div>
+        <div class="fc-desc">Zarządzanie sędziami i protokolantami. Lista osób z filtrami roli. Profil osoby: statystyki meczów, zarządzanie dostępnością. <strong>Czyta</strong> <code>plAvailHighlight</code> z planowanie.js i wywołuje <code>renderCalendar()</code>.</div>
+        <div class="fc-tags">
+          <span class="fc-tag">loadSedziowie()</span><span class="fc-tag">loadSpDetail()</span><span class="fc-tag">toggleAvailHighlight()</span><span class="fc-tag">saveAvailability()</span>
+        </div>
+      </div>
+
+      <div class="file-card" style="--fc: var(--gold)" id="f-ranking-card">
+        <div class="fc-name">admin-ranking.js</div>
+        <div class="fc-desc">Ranking generalny klas. Formuła: <code>Score = Σ(Pb × Wf × Wd)</code>. Dwa widoki: tabela wynikowa (<code>loadRankingView()</code>) i ustawienia wag (<code>loadRankingTab()</code> wywoływana z turniej.js).</div>
+        <div class="fc-tags">
+          <span class="fc-tag">loadRankingView()</span><span class="fc-tag">loadRankingTab()</span><span class="fc-tag">computeRankingFromDB()</span><span class="fc-tag">wireRankingSettingsEvents() → saveTournamentSettings()</span>
+        </div>
+      </div>
+
+      <div class="file-card" style="--fc: var(--fn)" id="f-sport-card">
+        <div class="fc-name">admin-sport.js</div>
+        <div class="fc-desc">Widoki per dyscyplina: tabela ligowa z grupami, SVG bracket pucharowy, terminarz, klasyfikacja strzelców/rzucających. <code>svEndLeague()</code> tworzy mecze przez <code>createMatch()</code> i wywołuje <code>initPlanowanie()</code>.</div>
+        <div class="fc-tags">
+          <span class="fc-tag">loadSportView(disc)</span><span class="fc-tag">svBuildLeague()</span><span class="fc-tag">svBuildBracket()</span><span class="fc-tag">svEndLeague() → createMatch()</span><span class="fc-tag">svBuildScorers()</span>
+        </div>
+      </div>
+
+      <div class="file-card" style="--fc: var(--cyan)" id="f-mecze-card">
+        <div class="fc-name">admin-mecze.js</div>
+        <div class="fc-desc">Lista meczów z filtrami + panel szczegółów. Formularze protokołów dla każdej dyscypliny (piłka nożna, koszykówka, siatkówka) z inline statystykami zawodników. Stan centralny w <code>MZ{}</code>.</div>
+        <div class="fc-tags">
+          <span class="fc-tag">loadMecze()</span><span class="fc-tag">mzOpenDetail(id)</span><span class="fc-tag">mzRenderFillForm()</span><span class="fc-tag">mzSaveFootballForm()</span><span class="fc-tag">mzSaveBasketballForm()</span><span class="fc-tag">mzSaveVolleyballForm()</span>
+        </div>
+      </div>
+
+      <div class="file-card" style="--fc: var(--muted)" id="f-print-card">
+        <div class="fc-name">admin-print-protocols.js</div>
+        <div class="fc-desc">Generator protokołów do druku (A4 portrait). Oddzielne szablony dla każdej dyscypliny + protokół rzutów karnych. Pobiera ustawienia przez <code>flatSettings()</code> → formatuje pola z limitami.</div>
+        <div class="fc-tags">
+          <span class="fc-tag">generatePrintProtocol(sport)</span><span class="fc-tag">generateBasketballPrintProtocol()</span><span class="fc-tag">generateFootballPrintProtocol()</span><span class="fc-tag">generateVolleyballPrintProtocol()</span><span class="fc-tag">flatSettings()</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ DB TABLES ══════════ -->
+  <div class="sec" id="db-tables">
+    <div class="sec-title">🗄 Tabele i widoki Supabase</div>
+
+    <div class="sub-title">Tabele bazowe</div>
+    <table class="tbl">
+      <thead><tr><th>Tabela</th><th>Klucz PK</th><th>Kluczowe kolumny</th><th>Używana przez</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="col-table">teams</td><td>id</td>
+          <td>team_name, class_name</td>
+          <td class="col-note">globals (CRUD), druzyny (read/write)</td>
+        </tr>
+        <tr>
+          <td class="col-table">people</td><td>id</td>
+          <td>first_name, last_name, class_name, role [Zawodnik|Sędzia|Protokolant|Obie role]</td>
+          <td class="col-note">globals (CRUD), druzyny, sedziowie, mecze</td>
+        </tr>
+        <tr>
+          <td class="col-table">players</td><td>id</td>
+          <td>team_id, person_id, is_captain, rodo_consent, participation_consent, entry_fee_paid</td>
+          <td class="col-note">globals (CRUD), druzyny, mecze</td>
+        </tr>
+        <tr>
+          <td class="col-table">matches</td><td>id</td>
+          <td>discipline, match_type [liga|puchar], cup_round, team1_id, team2_id, score_t1, score_t2, shootout_t1, shootout_t2, status [Planowany|Rozegrany|Odwołany|Walkower], match_date, match_time, location, referee_id, scorer_id</td>
+          <td class="col-note">globals (CRUD), planowanie, sport, mecze</td>
+        </tr>
+        <tr>
+          <td class="col-table">match_periods</td><td>id</td>
+          <td>match_id, period_num, score_t1, score_t2</td>
+          <td class="col-note">globals (savePeriods), mecze</td>
+        </tr>
+        <tr>
+          <td class="col-table">match_player_stats</td><td>id</td>
+          <td>match_id, player_id, goals, yellow_cards, red_cards, total_points, points_1pt, points_2pt, points_3pt, personal_fouls, minutes_played</td>
+          <td class="col-note">globals (savePlayerStats), mecze</td>
+        </tr>
+        <tr>
+          <td class="col-table">match_team_stats</td><td>id</td>
+          <td>match_id, team_id, timeouts_used, substitutions_made, team_fouls</td>
+          <td class="col-note">globals (saveTeamStats), mecze</td>
+        </tr>
+        <tr>
+          <td class="col-table">match_logs</td><td>id</td>
+          <td>match_id, event_time, event_type, team_id, player_id, description, period_num</td>
+          <td class="col-note">globals (saveLogs), mecze</td>
+        </tr>
+        <tr>
+          <td class="col-table">seeding</td><td>id</td>
+          <td>discipline, type [liga|puchar], team_id, position (int — indeks slotu)</td>
+          <td class="col-note">globals (saveSeeding), rozstawienie, planowanie</td>
+        </tr>
+        <tr>
+          <td class="col-table">tournament_format</td><td>discipline (unique)</td>
+          <td>has_league, has_cup, groups_count, teams_per_group, cup_rounds (jsonb), pts_win, pts_draw, pts_loss, league_closed</td>
+          <td class="col-note">globals (saveTournamentFormat), turniej</td>
+        </tr>
+        <tr>
+          <td class="col-table">tournament_settings</td><td>key (unique)</td>
+          <td>key (string), value (string) — sklep klucz-wartość. Klucze: name, date_from, date_to, location, football_*, basketball_*, volleyball_*, ranking_wf_*, ranking_wd_*</td>
+          <td class="col-note">globals (saveTournamentSettings), turniej, ranking, print-protocols</td>
+        </tr>
+        <tr>
+          <td class="col-table">people_availability</td><td>id</td>
+          <td>person_id, day_of_week [0-6], hour_start, hour_end</td>
+          <td class="col-note">globals (saveAvailability), sedziowie</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="sub-title">Widoki (Views) — tylko do odczytu</div>
+    <table class="tbl">
+      <thead><tr><th>Widok</th><th>Opis</th><th>Używany przez</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="col-table">matches_full</td>
+          <td>matches + JOIN teams (team1_name, team2_name) + JOIN people (referee_name, scorer_name). Główne źródło danych dla list meczów.</td>
+          <td class="col-note">api('/matches'), api('/matches/:id'), globals (po createMatch)</td>
+        </tr>
+        <tr>
+          <td class="col-table">player_stats_full</td>
+          <td>match_player_stats + JOIN players + people + teams. Używany przez /top-scorers-detail.</td>
+          <td class="col-note">api('/top-scorers-detail/:disc') → sport.js</td>
+        </tr>
+        <tr>
+          <td class="col-table">standings_raw</td>
+          <td>Agregatowy widok wyników ligowych: wins, draws, losses, gf, ga, pts per drużyna per dyscyplina. Baza dla /standings-custom.</td>
+          <td class="col-note">api('/standings-custom/:disc') → sport.js, ranking.js</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ══════════ API ENDPOINTS ══════════ -->
+  <div class="sec" id="db-endpoints">
+    <div class="sec-title">🔌 Endpointy <code>api()</code> — mapa ścieżek</div>
+    <p style="font-size:.82rem;color:var(--muted);margin-bottom:.8rem">Ścieżki parsowane dynamicznie przez <code>matchEndpoint()</code>. 4 ścieżki w <code>ENDPOINT_MAP</code>, reszta budowana na podstawie wzorca URL.</p>
+    <table class="tbl">
+      <thead><tr><th>Ścieżka</th><th>Tabela / Widok</th><th>Używana w</th></tr></thead>
+      <tbody>
+        <tr><td class="api">/tournament-format</td><td class="col-table">tournament_format</td><td class="col-note">nav, rozstawienie, planowanie, sport, ranking, turniej</td></tr>
+        <tr><td class="api">/tournament-settings</td><td class="col-table">tournament_settings</td><td class="col-note">turniej, ranking, print-protocols</td></tr>
+        <tr><td class="api">/matches</td><td class="col-table">matches_full</td><td class="col-note">dashboard, planowanie, mecze</td></tr>
+        <tr><td class="api">/matches?discipline=X</td><td class="col-table">matches_full</td><td class="col-note">sport (terminarz, svBuildSchedule)</td></tr>
+        <tr><td class="api">/matches?discipline=X&amp;match_type=puchar</td><td class="col-table">matches_full</td><td class="col-note">planowanie (generowanie kolejnej rundy)</td></tr>
+        <tr><td class="api">/matches/:id</td><td class="col-table">matches_full</td><td class="col-note">mecze (mzOpenDetail)</td></tr>
+        <tr><td class="api">/people</td><td class="col-table">people</td><td class="col-note">mecze (select sędziego), sedziowie, planowanie</td></tr>
+        <tr><td class="api">/people/:id/stats</td><td class="col-table">people + matches</td><td class="col-note">sedziowie (loadSpDetail)</td></tr>
+        <tr><td class="api">/people/availability?ids=X</td><td class="col-table">people_availability</td><td class="col-note">sedziowie, planowanie (plAvailCache)</td></tr>
+        <tr><td class="api">/teams</td><td class="col-table">teams</td><td class="col-note">rozstawienie, planowanie</td></tr>
+        <tr><td class="api">/teams/:id/players</td><td class="col-table">players + people</td><td class="col-note">mecze (skład do protokołu)</td></tr>
+        <tr><td class="api">/seeding/:disc/:type</td><td class="col-table">seeding + teams</td><td class="col-note">rozstawienie, planowanie, sport</td></tr>
+        <tr><td class="api">/standings-custom/:disc</td><td class="col-table">standings_raw</td><td class="col-note">sport (svBuildLeague), ranking</td></tr>
+        <tr><td class="api">/bracket/:disc</td><td class="col-table">matches_full</td><td class="col-note">sport (svBuildBracket), planowanie</td></tr>
+        <tr><td class="api">/top-scorers-detail/:disc</td><td class="col-table">player_stats_full</td><td class="col-note">sport (svBuildScorers)</td></tr>
+        <tr><td class="api">/ranking-data/:disc</td><td class="col-table">standings_raw + seeding + matches</td><td class="col-note">ranking (computeRankingFromDB)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ══════════ DEPENDENCY MATRIX ══════════ -->
+  <div class="sec" id="dep-matrix">
+    <div class="sec-title">🔢 Macierz zależności (tabele Supabase × pliki JS)</div>
+
+    <div class="legend">
+      <span><span class="l-box" style="background:rgba(34,197,94,.5)"></span>DEF — definiuje wrapper</span>
+      <span><span class="l-box" style="background:rgba(108,99,255,.5)"></span>CALL — wywołuje wrapper z globals</span>
+      <span><span class="l-box" style="background:rgba(251,146,60,.5)"></span>R/W — bezpośredni raw supabase (odczyt+zapis)</span>
+      <span><span class="l-box" style="background:rgba(245,158,11,.4)"></span>R — bezpośredni raw supabase (tylko odczyt)</span>
+      <span><span class="l-box" style="background:rgba(239,68,68,.4)"></span>W — bezpośredni raw supabase (tylko zapis)</span>
+    </div>
+
+    <div class="matrix-wrap">
+      <table class="matrix">
+        <thead>
+          <tr>
+            <th>Tabela</th>
+            <th>globals</th><th>nav</th><th>turniej</th><th>druzyny</th>
+            <th>rozstaw.</th><th>planow.</th><th>sędz.</th>
+            <th>ranking</th><th>sport</th><th>mecze</th><th>print</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>matches</th>
+            <td class="m-def">DEF</td><td class="m-na">—</td><td class="m-na">—</td><td class="m-na">—</td>
+            <td class="m-na">—</td><td class="m-rw">R/W</td><td class="m-na">—</td>
+            <td class="m-na">—</td><td class="m-call">CALL</td><td class="m-call">CALL</td><td class="m-na">—</td>
+          </tr>
+          <tr>
+            <th>matches_full</th>
+            <td class="m-def">DEF</td><td class="m-na">—</td><td class="m-na">—</td><td class="m-na">—</td>
+            <td class="m-na">—</td><td class="m-read">R</td><td class="m-na">—</td>
+            <td class="m-na">—</td><td class="m-read">R</td><td class="m-read">R</td><td class="m-na">—</td>
+          </tr>
+          <tr>
+            <th>match_periods</th>
+            <td class="m-def">DEF</td><td class="m-na">—</td><td class="m-na">—</td><td class="m-na">—</td>
+            <td class="m-na">—</td><td class="m-na">—</td><td class="m-na">—</td>
+            <td class="m-na">—</td><td class="m-na">—</td><td class="m-rw">R/W</td><td class="m-na">—</td>
+          </tr>
+          <tr>
+            <th>match_player_stats</th>
+            <td class="m-def">DEF</td><td class="m-na">—</td><td class="m-na">—</td><td class="m-na">—</td>
+            <td class="m-na">—</td><td class="m-na">—</td><td class="m-na">—</td>
+            <td class="m-na">—</td><td class="m-na">—</td><td class="m-rw">R/W</td><td class="m-na">—</td>
+          </tr>
+          <tr>
+            <th>match_team_stats</th>
+            <td class="m-def">DEF</td><td class="m-na">—</td><td class="m-na">—</td><td class="m-na">—</td>
+            <td class="m-na">—</td><td class="m-na">—</td><td class="m-na">—</td>
+            <td class="m-na">—</td><td class="m-na">—</td><td class="m-rw">R/W</td><td class="m-na">—</td>
+          </tr>
+          <tr>
+            <th>match_logs</th>
+            <td class="m-def">DEF</td><td class="m-na">—</td><td class="m-na">—</td><td class="m-na">—</td>
+            <td class="m-na">—</td><td class="m-na">—</td><td class="m-na">—</td>
+            <td class="m-na">—</td><td class="m-na">—</td><td class="m-rw">R/W</td><td class="m-na">—</td>
+          </tr>
+          <tr>
+            <th>teams</th>
+            <td class="m-def">DEF</td><td class="m-na">—</td><td class="m-na">—</td><td class="m-rw">R/W</td>
+            <td class="m-na">—</td><td class="m-na">—</td><td class="m-na">—</td>
+            <td class="m-na">—</td><td class="m-na">—</td><td class="m-na">—</td><td class="m-na">—</td>
+          </tr>
+          <tr>
+            <th>people</th>
+            <td class="m-def">DEF</td><td class="m-na">—</td><td class="m-na">—</td><td class="m-rw">R/W</td>
+            <td class="m-na">—</td><td class="m-read">R</td><td class="m-rw">R/W</td>
+            <td class="m-na">—</td><td class="m-na">—</td><td class="m-read">R</td><td class="m-na">—</td>
+          </tr>
+          <tr>
+            <th>players</th>
+            <td class="m-def">DEF</td><td class="m-na">—</td><td class="m-na">—</td><td class="m-rw">R/W</td>
+            <td class="m-call">CALL</td><td class="m-na">—</td><td class="m-na">—</td>
+            <td class="m-na">—</td><td class="m-na">—</td><td class="m-read">R</td><td class="m-na">—</td>
+          </tr>
+          <tr>
+            <th>seeding</th>
+            <td class="m-def">DEF</td><td class="m-na">—</td><td class="m-na">—</td><td class="m-na">—</td>
+            <td class="m-call">CALL</td><td class="m-read">R</td><td class="m-na">—</td>
+            <td class="m-na">—</td><td class="m-na">—</td><td class="m-na">—</td><td class="m-na">—</td>
+          </tr>
+          <tr>
+            <th>tournament_format</th>
+            <td class="m-def">DEF</td><td class="m-read">R</td><td class="m-rw">R/W</td><td class="m-na">—</td>
+            <td class="m-na">—</td><td class="m-read">R</td><td class="m-na">—</td>
+            <td class="m-read">R</td><td class="m-read">R</td><td class="m-na">—</td><td class="m-na">—</td>
+          </tr>
+          <tr>
+            <th>tournament_settings</th>
+            <td class="m-def">DEF</td><td class="m-read">R</td><td class="m-rw">R/W</td><td class="m-na">—</td>
+            <td class="m-na">—</td><td class="m-na">—</td><td class="m-na">—</td>
+            <td class="m-call">CALL</td><td class="m-na">—</td><td class="m-na">—</td><td class="m-read">R</td>
+          </tr>
+          <tr>
+            <th>people_availability</th>
+            <td class="m-def">DEF</td><td class="m-na">—</td><td class="m-na">—</td><td class="m-na">—</td>
+            <td class="m-na">—</td><td class="m-read">R</td><td class="m-call">CALL</td>
+            <td class="m-na">—</td><td class="m-na">—</td><td class="m-na">—</td><td class="m-na">—</td>
+          </tr>
+          <tr>
+            <th>standings_raw</th>
+            <td class="m-read">R</td><td class="m-na">—</td><td class="m-na">—</td><td class="m-na">—</td>
+            <td class="m-na">—</td><td class="m-na">—</td><td class="m-na">—</td>
+            <td class="m-read">R</td><td class="m-read">R</td><td class="m-na">—</td><td class="m-na">—</td>
+          </tr>
+          <tr>
+            <th>player_stats_full</th>
+            <td class="m-read">R</td><td class="m-na">—</td><td class="m-na">—</td><td class="m-na">—</td>
+            <td class="m-na">—</td><td class="m-na">—</td><td class="m-na">—</td>
+            <td class="m-na">—</td><td class="m-read">R</td><td class="m-na">—</td><td class="m-na">—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══════════ CROSS-FILE CALLS ══════════ -->
+  <div class="sec" id="dep-crossfile">
+    <div class="sec-title">🔗 Zależności cross-file — wywołania między plikami</div>
+    <table class="tbl">
+      <thead><tr><th>Plik wywołujący</th><th>Wywołuje</th><th>Zdefiniowane w</th><th>Kontekst</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="col-from">admin-nav.js</td>
+          <td><code class="fn">loadDashboard()</code></td>
+          <td class="col-to">admin-dashboard.js</td>
+          <td class="col-note">navigate("dashboard")</td>
+        </tr>
+        <tr>
+          <td class="col-from">admin-nav.js</td>
+          <td><code class="fn">loadTurniej()</code></td>
+          <td class="col-to">admin-turniej.js</td>
+          <td class="col-note">navigate("turniej")</td>
+        </tr>
+        <tr>
+          <td class="col-from">admin-nav.js</td>
+          <td><code class="fn">loadAdminTeams()</code></td>
+          <td class="col-to">admin-druzyny.js</td>
+          <td class="col-note">navigate("druzyny")</td>
+        </tr>
+        <tr>
+          <td class="col-from">admin-nav.js</td>
+          <td><code class="fn">loadRozstawienie()</code> + <code class="fn">srApplyFormatConstraints()</code></td>
+          <td class="col-to">admin-rozstawienie.js</td>
+          <td class="col-note">navigate("rozstawienie") — oba wywołane naraz</td>
+        </tr>
+        <tr>
+          <td class="col-from">admin-nav.js</td>
+          <td><code class="fn">loadPlanowanie()</code></td>
+          <td class="col-to">admin-planowanie.js</td>
+          <td class="col-note">navigate("rozgrywki")</td>
+        </tr>
+        <tr>
+          <td class="col-from">admin-nav.js</td>
+          <td><code class="fn">loadSedziowie()</code></td>
+          <td class="col-to">admin-sedziowie.js</td>
+          <td class="col-note">navigate("sedziowie")</td>
+        </tr>
+        <tr>
+          <td class="col-from">admin-nav.js</td>
+          <td><code class="fn">loadMecze()</code></td>
+          <td class="col-to">admin-mecze.js</td>
+          <td class="col-note">navigate("mecze") + navigateToMatch(id)</td>
+        </tr>
+        <tr>
+          <td class="col-from">admin-nav.js</td>
+          <td><code class="fn">loadSportView(disc)</code></td>
+          <td class="col-to">admin-sport.js</td>
+          <td class="col-note">navigate("sport-football/basketball/volleyball")</td>
+        </tr>
+        <tr>
+          <td class="col-from">admin-nav.js</td>
+          <td><code class="fn">loadRankingView()</code></td>
+          <td class="col-to">admin-ranking.js</td>
+          <td class="col-note">navigate("ranking")</td>
+        </tr>
+        <tr>
+          <td class="col-from">admin-nav.js</td>
+          <td><code class="fn">mzRenderList()</code> + <code class="fn">mzOpenDetail()</code> + <code class="fn">mzBindFilters()</code></td>
+          <td class="col-to">admin-mecze.js</td>
+          <td class="col-note">navigateToMatch(id) — wewnętrzne wsparcie</td>
+        </tr>
+        <tr>
+          <td class="col-from">admin-turniej.js</td>
+          <td><code class="fn">loadRankingTab()</code></td>
+          <td class="col-to">admin-ranking.js</td>
+          <td class="col-note">Zakładka „Ranking" w panelu Turnieju</td>
+        </tr>
+        <tr>
+          <td class="col-from">admin-druzyny.js</td>
+          <td><code class="fn">showAddPlayerModal(teamId)</code></td>
+          <td class="col-to">admin-rozstawienie.js</td>
+          <td class="col-note">Przycisk „+ Dodaj zawodnika" w panelu składu</td>
+        </tr>
+        <tr>
+          <td class="col-from">admin-sedziowie.js</td>
+          <td><code class="glb">plAvailHighlight</code> (read/write)</td>
+          <td class="col-to">admin-planowanie.js</td>
+          <td class="col-note">Stan tablicy dostępności nakładanej na kalendarz</td>
+        </tr>
+        <tr>
+          <td class="col-from">admin-sedziowie.js</td>
+          <td><code class="fn">renderCalendar()</code></td>
+          <td class="col-to">admin-planowanie.js</td>
+          <td class="col-note">toggleAvailHighlight() i saveAvailability() → odświeżają kalendarz</td>
+        </tr>
+        <tr>
+          <td class="col-from">admin-sport.js</td>
+          <td><code class="fn">navigateToMatch(id)</code></td>
+          <td class="col-to">admin-nav.js</td>
+          <td class="col-note">Kliknięcie meczu w terminardzu lub SVG bracket</td>
+        </tr>
+        <tr>
+          <td class="col-from">admin-sport.js</td>
+          <td><code class="fn">createMatch(body)</code></td>
+          <td class="col-to">admin-globals.js</td>
+          <td class="col-note">svEndLeague() — tworzy mecze pierwszej rundy pucharu</td>
+        </tr>
+        <tr>
+          <td class="col-from">admin-sport.js</td>
+          <td><code class="fn">initPlanowanie()</code> / <code class="fn">forceReloadServerMatches()</code></td>
+          <td class="col-to">admin-planowanie.js</td>
+          <td class="col-note">Po svEndLeague() — odświeża planer nowo wygenerowanymi meczami</td>
+        </tr>
+        <tr>
+          <td class="col-from">admin-mecze.js</td>
+          <td><code class="fn">loadDashboard()</code></td>
+          <td class="col-to">admin-dashboard.js</td>
+          <td class="col-note">Po zapisaniu wyniku — odświeża dashboard</td>
+        </tr>
+        <tr>
+          <td class="col-from">admin-ranking.js</td>
+          <td><code class="fn">navigate('turniej')</code></td>
+          <td class="col-to">admin-nav.js</td>
+          <td class="col-note">Przycisk „⚙️ Zmień wagi" w widoku rankingu</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ══════════ STATE ══════════ -->
+  <div class="sec" id="dep-state">
+    <div class="sec-title">💾 Stan globalny modułów</div>
+
+    <div class="sub-title">admin-planowanie.js — stan kalendarza</div>
+    <div class="state-block">
+      <span class="sv">let</span> <span class="st">plQueue</span>      <span class="sc">= []</span>         <span class="sc">// mecze niezaplanowane (kolejka)</span><br>
+      <span class="sv">let</span> <span class="st">plScheduled</span>  <span class="sc">= []</span>         <span class="sc">// mecze na kalendarzu (lokalne, niezapisane)</span><br>
+      <span class="sv">let</span> <span class="st">plAvailHighlight</span> <span class="sc">= []</span>   <span class="sc">// ⚠️ czytane przez sedziowie.js</span><br>
+      <span class="sv">let</span> <span class="st">plAvailCache</span> <span class="sc">= {}</span>        <span class="sc">// personId → sloty dostępności</span><br>
+      <span class="sv">let</span> <span class="st">plDirtyCount</span> <span class="sc">= 0</span>          <span class="sc">// liczba niezapisanych zmian</span><br>
+      <span class="sv">let</span> <span class="st">plCalView</span>   <span class="sc">= "week"</span>       <span class="sc">// "week" | "day"</span><br>
+      <span class="sv">let</span> <span class="st">plCalDate</span>   <span class="sc">= new Date()</span>  <span class="sc">// bieżąca data kalendarza</span><br>
+      <span class="sv">let</span> <span class="st">plInitDone</span>  <span class="sc">= false</span>        <span class="sc">// guard — inicjalizacja tylko raz</span><br>
+      <span class="sv">let</span> <span class="st">plPeopleCache</span> <span class="sc">= null</span>      <span class="sc">// cache listy osób (sędziowie + protokolanci)</span>
+    </div>
+
+    <div class="sub-title">admin-rozstawienie.js — stan workspace</div>
+    <div class="state-block">
+      <span class="sv">let</span> <span class="st">srDisc</span>      <span class="sc">= "Piłka Nożna"</span>  <span class="sc">// aktywna dyscyplina</span><br>
+      <span class="sv">let</span> <span class="st">srType</span>      <span class="sc">= "liga"</span>         <span class="sc">// "liga" | "puchar"</span><br>
+      <span class="sv">let</span> <span class="st">srSlots</span>     <span class="sc">= []</span>             <span class="sc">// { gIdx, sIdx, team|null, key } — sloty na mapie</span><br>
+      <span class="sv">let</span> <span class="st">srPool</span>      <span class="sc">= []</span>             <span class="sc">// drużyny nienprzypisane</span><br>
+      <span class="sv">let</span> <span class="st">srDragging</span>  <span class="sc">= null</span>           <span class="sc">// aktualnie przeciągana drużyna</span><br>
+      <span class="sv">let</span> <span class="st">srLocked</span>   <span class="sc">= false</span>          <span class="sc">// blokada edycji</span><br>
+      <span class="sv">let</span> <span class="st">srDirty</span>    <span class="sc">= false</span>          <span class="sc">// niezapisane zmiany</span>
+    </div>
+
+    <div class="sub-title">admin-mecze.js — stan listy meczów</div>
+    <div class="state-block">
+      <span class="sv">const</span> <span class="st">MZ</span> = {<br>
+      &nbsp;&nbsp;<span class="st">allMatches</span><span class="sc">: []</span>         <span class="sc">// pełna lista załadowana z bazy</span><br>
+      &nbsp;&nbsp;<span class="st">filterStatus</span><span class="sc">: "all"</span>    <span class="sc">// aktywny filtr statusu</span><br>
+      &nbsp;&nbsp;<span class="st">filterDisc</span><span class="sc">: "all"</span>      <span class="sc">// aktywny filtr dyscypliny</span><br>
+      &nbsp;&nbsp;<span class="st">searchText</span><span class="sc">: ""</span>         <span class="sc">// tekst wyszukiwania</span><br>
+      &nbsp;&nbsp;<span class="st">currentMatch</span><span class="sc">: null</span>     <span class="sc">// id aktualnie otwartego meczu</span><br>
+      &nbsp;&nbsp;<span class="st">currentMatchData</span><span class="sc">: null</span> <span class="sc">// pełne dane otw. meczu</span><br>
+      }
+    </div>
+
+    <div class="sub-title">admin-nav.js — cache formatu rozstawienia</div>
+    <div class="state-block">
+      <span class="sv">let</span> <span class="st">_srFmtCache</span> <span class="sc">= null</span>  <span class="sc">// cache tournament_format dla srApplyFormatConstraints()</span><br>
+      <span class="sc">                          // resetowany przy każdym navigate("rozstawienie") przez _srFmtCache = null nie — pozostaje między nawigacjami</span>
+    </div>
+
+    <div class="sub-title">admin-turniej.js — cache formatu</div>
+    <div class="state-block">
+      <span class="sv">let</span> <span class="st">adminFmtCache</span> <span class="sc">= null</span>  <span class="sc">// normFmt(tournament_format) — używane między funkcjami w turniej.js</span>
+    </div>
+  </div>
+
+  <!-- ══════════ ISSUES ══════════ -->
+  <div class="sec" id="issues">
+    <div class="sec-title">🐛 Znane problemy i poprawki</div>
+
+    <div class="call call-fix">
+      <span class="call-ico">✅</span>
+      <p><strong>NAPRAWIONE — normFmt() duplikat:</strong> Było zdefiniowane w 4 plikach (globals, turniej, sport, planowanie + guard w rozstawieniu). Przeniesione do <code>admin-globals.js</code> jako jedyne źródło prawdy z eksportem <code>window.normFmt</code>. Pozostałe pliki mają komentarz zastępczy.</p>
+    </div>
+
+    <div class="call call-fix">
+      <span class="call-ico">✅</span>
+      <p><strong>NAPRAWIONE — svEndLeague() raw insert:</strong> <code>supabase.from('matches').insert()</code> zastąpiony <code>createMatch()</code> z globals. Zysk: loader, spójność architektury, poprawna obsługa team_id vs id w obiektach z tabeli standings.</p>
+    </div>
+
+    <div class="call call-fix">
+      <span class="call-ico">✅</span>
+      <p><strong>NAPRAWIONE — srSave() raw query:</strong> DELETE + INSERT na tabeli <code>seeding</code> zastąpione wywołaniem <code>saveSeeding()</code>. wireRankingSettingsEvents() — raw upsert zastąpiony <code>saveTournamentSettings()</code>.</p>
+    </div>
+
+    <div class="call call-fix">
+      <span class="call-ico">✅</span>
+      <p><strong>NAPRAWIONE — showAddPlayerModal() boolean bug:</strong> Pola <code>is_captain</code>, <code>rodo_consent</code>, <code>participation_consent</code> były wstawiane jako <code>1/0</code> (integer) zamiast <code>true/false</code> (PostgreSQL boolean). Przepisane na <code>createPlayer()</code>.</p>
+    </div>
+
+    <div class="call call-fix">
+      <span class="call-ico">✅</span>
+      <p><strong>NAPRAWIONE — CSS vs JS mismatch w klasyfikacji strzelców:</strong> Poprzedni CSS zawierał klasy <code>.sv-scorers-section</code>, <code>.sv-sc-rank-cell</code> itp., które nie istniały w HTML generowanym przez <code>svBuildScorers()</code>. CSS przepisany z prawdziwych klas: <code>.sv-sc-medal</code>, <code>.sv-sc-name</code>, <code>.sv-sc-pts--main</code>, <code>.sv-sc-bar-wrap</code> itd.</p>
+    </div>
+
+    <table class="tbl" style="margin-top:1rem">
+      <thead><tr><th>Problem</th><th>Plik</th><th>Status</th><th>Opis</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>saveTeam() raw supabase</td>
+          <td class="col-file">admin-druzyny.js</td>
+          <td style="color:var(--gold)">⚠ znany</td>
+          <td class="col-note">Używa bezpośrednio <code>supabase.from('teams').update()</code> zamiast <code>updateTeam()</code>. Działa poprawnie — niespójność architektoniczna, nie bug.</td>
+        </tr>
+        <tr>
+          <td>showAddPlayerModal w rozstawieniu</td>
+          <td class="col-file">admin-rozstawienie.js</td>
+          <td style="color:var(--gold)">⚠ znany</td>
+          <td class="col-note">Funkcja używana przez druzyny.js jest zdefiniowana w rozstawieniu.js. Semantycznie należy do druzyny.js — przeniesienie wymaga reorganizacji pliku.</td>
+        </tr>
+        <tr>
+          <td>plAvailHighlight shared state</td>
+          <td class="col-file">planowanie ↔ sedziowie</td>
+          <td style="color:var(--cyan)">🔵 celowy design</td>
+          <td class="col-note">sedziowie.js czyta i modyfikuje <code>plAvailHighlight[]</code> z planowanie.js. Zmienna globalna — działa bo skrypty ładowane sekwencyjnie, planowanie musi być załadowane PRZED sedziowie.</td>
+        </tr>
+        <tr>
+          <td>api() parsuje ścieżki regexem</td>
+          <td class="col-file">admin-globals.js</td>
+          <td style="color:var(--cyan)">🔵 architektura</td>
+          <td class="col-note">Brak walidacji ścieżek. Nieznana ścieżka → <code>matchEndpoint()</code> zwraca null → <code>api()</code> zwraca null bez błędu. Trudne do debugowania.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</main>
+</div>
+
+<script>
+// Aktywny link w sidebar na podstawie scroll
+const links = document.querySelectorAll('.sb-link');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.remove('active'));
+      const active = document.querySelector(`.sb-link[href="#${e.target.id}"]`);
+      if (active) active.classList.add('active');
+    }
+  });
+}, { threshold: 0.3, rootMargin: '-10% 0px -60% 0px' });
+document.querySelectorAll('.sec').forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
