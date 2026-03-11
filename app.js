@@ -486,11 +486,11 @@ const DISC_CLASS = { "Piłka Nożna":"disc-football","Koszykówka":"disc-basketb
 const DISC_EMOJI = { "Piłka Nożna":"⚽","Koszykówka":"🏀","Siatkówka":"🏐" };
 
 
-(icon, msg) => {
+const emptyState = (icon, msg) => {
   const d = el("div","empty-state");
   d.innerHTML = `<div class="icon">${icon}</div><p>${msg}</p>`;
   return d;
-}
+};
 
 /* ════════════════════════════════════════════════════════════════════════════
    FORMAT — pobierz i cache'uj

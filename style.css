@@ -1633,6 +1633,8 @@ thead .sv-col-sticky-team {
 /* ── Siatkówka — kolumny zawsze widoczne ─────────────────────────────────── */
 .sv-td-vb-detail { color: var(--muted); }
 .sv-th-vb-detail { color: var(--muted); }
+.sv-td-vb-sets-detail { color: var(--muted); }
+.sv-td-vb-pts-detail  { color: var(--muted); font-size: .8rem; }
 .sv-td-vb-bil    { font-weight: 700; }
 .sv-th-vb-bil    { font-weight: 800; }
 
@@ -1763,6 +1765,12 @@ thead .sv-col-sticky-team {
   border-radius: 20px;
   margin-top: .1rem;
 }
+.bsk-final-sub {
+  font-size: .65rem;
+  color: var(--muted);
+  text-align: center;
+  margin-top: .1rem;
+}
 .bsk-final-win .bsk-final-num   { color: #4ade80; }
 .bsk-final-win .bsk-final-name  { color: #e2e8f0; font-weight: 700; }
 .bsk-final-win .bsk-final-badge { background: rgba(74,222,128,.18); color: #4ade80; border: 1px solid rgba(74,222,128,.35); }
@@ -1823,6 +1831,8 @@ thead .sv-col-sticky-team {
 .bsk-q-th-t1     { border-left: 2px solid rgba(255,255,255,.1) !important; }
 .bsk-q-th-t2     { border-left: 2px solid rgba(255,255,255,.1) !important; }
 .bsk-q-th-win    { color: #4ade80 !important; background: rgba(74,222,128,.08) !important; }
+.bsk-q-th-sub    { font-size: .65rem; font-weight: 600; color: var(--muted); background: #151c28 !important; text-transform: uppercase; letter-spacing: .05em; }
+.vb-q-table .bsk-q-td-label { font-weight: 600; }
 .bsk-q-head-sub th { background: #18202e; font-size: .68rem; border-top: none !important; }
 
 /* Wiersze danych */
@@ -3536,6 +3546,11 @@ body.theme-light .dd-btn--ranking.active { color: #6b4a00; }
   background: rgba(212, 168, 0, .15);
   color: #ffd700;
 }
+.mob-opt--disabled {
+  opacity: .4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
 /* ── Nazwa drużyny jako klikalny button (tylko ona, nie cały wiersz) ────── */
 .rk-name-btn {
   background: none;
@@ -3764,6 +3779,7 @@ body.theme-light .dd-btn--ranking.active { color: #6b4a00; }
 }
 .tp-players-table--stats th.tp-col-name { text-align: left; }
 .tp-players-table--stats th.tp-col-sep  { border-left: 2px solid var(--border); }
+.tp-players-table--stats th.tp-col-disc { text-align: center; font-size: .75rem; white-space: nowrap; }
 
 /* Separator kolumn dyscyplin */
 .tp-players-table--stats td.tp-col-sep { border-left: 2px solid var(--border); }
@@ -4313,6 +4329,7 @@ body.theme-light .bsk-q-head-sub th { background: var(--bg3) !important; color: 
 body.theme-light .bsk-q-th-kwarta { background: #e8eef5 !important; }
 body.theme-light .bsk-q-th-wynik  { background: #e8eef5 !important; }
 body.theme-light .bsk-q-th-team   { background: #dde6f3 !important; }
+body.theme-light .bsk-q-th-sub    { background: #e8eef5 !important; color: var(--muted); }
 body.theme-light .bsk-q-row td {
   border-color: rgba(0,0,0,.05) !important;
   color: var(--muted);
